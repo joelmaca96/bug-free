@@ -4,10 +4,11 @@ Aplicación web para gestionar y generar automáticamente horarios de empleados 
 
 ## 🚀 Estado del Proyecto
 
-**Fase 1 Completada** - Setup del proyecto y funcionalidades básicas
+**Fase 1 y Fase 2 Completadas** - Setup del proyecto y gestión de empleados
 
 ### ✅ Funcionalidades Implementadas
 
+**Fase 1 - Setup y Funcionalidades Básicas:**
 - ✅ Setup completo del proyecto (React + Vite + TypeScript + Material-UI)
 - ✅ Configuración de Firebase (Auth, Firestore, Functions, Hosting)
 - ✅ Sistema de autenticación multi-método:
@@ -20,6 +21,24 @@ Aplicación web para gestionar y generar automáticamente horarios de empleados 
 - ✅ CRUD completo de Farmacias
 - ✅ Layout responsive con drawer lateral
 - ✅ Reglas de seguridad de Firestore
+
+**Fase 2 - Gestión de Empleados:**
+- ✅ CRUD completo de Empleados/Usuarios
+- ✅ Formulario con tabs (Datos Personales + Restricciones Horarias)
+- ✅ Validaciones avanzadas:
+  - NIF/NIE español con verificación de letra de control
+  - Email con formato correcto
+  - Teléfono español (móvil y fijo)
+  - Nombres y apellidos (solo letras)
+- ✅ Sistema de restricciones horarias por empleado:
+  - Horas máximas diarias (hasta 24h)
+  - Horas máximas semanales (hasta 168h)
+  - Horas máximas mensuales
+  - Horas máximas anuales
+  - Validación de coherencia entre límites
+- ✅ Componente EmpleadoStats con progress bars visuales
+- ✅ Filtrado de empleados por farmacia y empresa
+- ✅ Control de acceso según rol (admin ve todos, gestor solo su farmacia)
 
 ## 🛠️ Tecnologías
 
@@ -37,18 +56,23 @@ bug-free/
 ├── src/
 │   ├── components/        # Componentes reutilizables
 │   │   ├── Layout.tsx    # Layout principal con drawer
-│   │   └── ProtectedRoute.tsx  # HOC para rutas protegidas
+│   │   ├── ProtectedRoute.tsx  # HOC para rutas protegidas
+│   │   └── EmpleadoStats.tsx   # Estadísticas de empleado (Fase 2)
 │   ├── contexts/         # Context API
 │   │   └── AuthContext.tsx  # Contexto de autenticación
 │   ├── pages/            # Páginas de la aplicación
 │   │   ├── Login.tsx     # Página de login
 │   │   ├── Dashboard.tsx # Dashboard principal
 │   │   ├── Empresas.tsx  # Gestión de empresas
-│   │   └── Farmacias.tsx # Gestión de farmacias
+│   │   ├── Farmacias.tsx # Gestión de farmacias
+│   │   └── Empleados.tsx # Gestión de empleados (Fase 2)
 │   ├── services/         # Servicios y lógica de negocio
 │   │   ├── firebase.ts   # Configuración de Firebase
 │   │   ├── empresasService.ts  # CRUD de empresas
-│   │   └── farmaciasService.ts # CRUD de farmacias
+│   │   ├── farmaciasService.ts # CRUD de farmacias
+│   │   └── usuariosService.ts  # CRUD de usuarios (Fase 2)
+│   ├── utils/            # Utilidades
+│   │   └── validations.ts # Validaciones de formularios (Fase 2)
 │   ├── types/            # Definiciones TypeScript
 │   │   └── index.ts      # Tipos globales
 │   ├── App.tsx           # Componente raíz con rutas
@@ -214,10 +238,10 @@ npm run preview
 
 ## 📝 Próximas Fases
 
-### Fase 2 (1.5 semanas)
-- CRUD de Empleados
-- Sistema de restricciones horarias
-- Panel de gestión de empleados
+### ✅ Fase 2 (1.5 semanas) - COMPLETADA
+- ✅ CRUD de Empleados
+- ✅ Sistema de restricciones horarias
+- ✅ Panel de gestión de empleados
 
 ### Fase 3 (2 semanas)
 - Configuración de horarios habituales
