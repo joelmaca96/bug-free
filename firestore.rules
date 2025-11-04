@@ -1,0 +1,119 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Función auxiliar para verificar autenticación
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    // Función para obtener los datos del usuario
+    function getUserData() {
+      return get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data;
+    }
+
+    // Función para verificar si el usuario es admin
+    function isAdmin() {
+      return isAuthenticated() && getUserData().rol == 'admin';
+    }
+
+    // Función para verificar si el usuario es gestor
+    function isGestor() {
+      return isAuthenticated() && getUserData().rol == 'gestor';
+    }
+
+    // Función para verificar si el usuario pertenece a la misma empresa
+    function isSameEmpresa(empresaId) {
+      return isAuthenticated() && getUserData().empresaId == empresaId;
+    }
+
+    // Función para verificar si el usuario pertenece a la misma farmacia
+    function isSameFarmacia(farmaciaId) {
+      return isAuthenticated() && getUserData().farmaciaId == farmaciaId;
+    }
+
+    // Reglas para usuarios
+    match /usuarios/{userId} {
+      // Los usuarios pueden leer su propia información
+      allow read: if isAuthenticated() && (
+        request.auth.uid == userId ||
+        isAdmin() ||
+        (isGestor() && isSameFarmacia(resource.data.farmaciaId))
+      );
+
+      // Solo admins pueden crear usuarios
+      allow create: if isAdmin();
+
+      // Los usuarios pueden actualizar su propia información (excepto rol y asignaciones)
+      // Los admins y gestores pueden actualizar usuarios de su farmacia
+      allow update: if isAuthenticated() && (
+        (request.auth.uid == userId &&
+         request.resource.data.rol == resource.data.rol &&
+         request.resource.data.farmaciaId == resource.data.farmaciaId &&
+         request.resource.data.empresaId == resource.data.empresaId) ||
+        isAdmin() ||
+        (isGestor() && isSameFarmacia(resource.data.farmaciaId))
+      );
+
+      // Solo admins pueden eliminar usuarios
+      allow delete: if isAdmin();
+    }
+
+    // Reglas para empresas
+    match /empresas/{empresaId} {
+      // Los usuarios autenticados pueden leer empresas a las que pertenecen
+      allow read: if isAuthenticated() && (isAdmin() || isSameEmpresa(empresaId));
+
+      // Solo admins pueden crear, actualizar y eliminar empresas
+      allow create, update, delete: if isAdmin();
+    }
+
+    // Reglas para farmacias
+    match /farmacias/{farmaciaId} {
+      // Los usuarios pueden leer farmacias de su empresa o su farmacia específica
+      allow read: if isAuthenticated() && (
+        isAdmin() ||
+        isSameEmpresa(resource.data.empresaId) ||
+        isSameFarmacia(farmaciaId)
+      );
+
+      // Solo admins pueden crear farmacias
+      allow create: if isAdmin();
+
+      // Admins y gestores de la farmacia pueden actualizar
+      allow update: if isAdmin() || (isGestor() && isSameFarmacia(farmaciaId));
+
+      // Solo admins pueden eliminar farmacias
+      allow delete: if isAdmin();
+    }
+
+    // Reglas para calendarios y turnos
+    match /calendarios/{farmaciaId}/turnos/{turnoId} {
+      // Los usuarios pueden ver turnos de su farmacia
+      allow read: if isAuthenticated() && isSameFarmacia(farmaciaId);
+
+      // Solo gestores y admins pueden crear y modificar turnos
+      allow create, update: if isAdmin() || (isGestor() && isSameFarmacia(farmaciaId));
+
+      // Solo gestores y admins pueden eliminar turnos
+      allow delete: if isAdmin() || (isGestor() && isSameFarmacia(farmaciaId));
+    }
+
+    // Reglas para configuración del algoritmo
+    match /configuracionesAlgoritmo/{farmaciaId} {
+      // Los usuarios pueden leer la configuración de su farmacia
+      allow read: if isAuthenticated() && isSameFarmacia(farmaciaId);
+
+      // Solo gestores y admins pueden modificar la configuración
+      allow create, update: if isAdmin() || (isGestor() && isSameFarmacia(farmaciaId));
+
+      // Solo admins pueden eliminar configuraciones
+      allow delete: if isAdmin();
+    }
+
+    // Denegar acceso a cualquier otra colección no especificada
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

@@ -1,1 +1,254 @@
-# bug-free
+# AgapitoDiSousa - Sistema de Gestión de Horarios para Farmacias
+
+Aplicación web para gestionar y generar automáticamente horarios de empleados en farmacias, considerando restricciones laborales, guardias, festivos y cobertura mínima de personal.
+
+## 🚀 Estado del Proyecto
+
+**Fase 1 Completada** - Setup del proyecto y funcionalidades básicas
+
+### ✅ Funcionalidades Implementadas
+
+- ✅ Setup completo del proyecto (React + Vite + TypeScript + Material-UI)
+- ✅ Configuración de Firebase (Auth, Firestore, Functions, Hosting)
+- ✅ Sistema de autenticación multi-método:
+  - Email/Password
+  - Google Sign-In
+  - Apple Sign-In
+- ✅ Sistema de roles (admin, gestor, empleado)
+- ✅ Rutas protegidas según roles
+- ✅ CRUD completo de Empresas
+- ✅ CRUD completo de Farmacias
+- ✅ Layout responsive con drawer lateral
+- ✅ Reglas de seguridad de Firestore
+
+## 🛠️ Tecnologías
+
+- **Frontend**: React 18 + TypeScript + Vite
+- **UI Framework**: Material-UI (MUI) v5
+- **Backend**: Firebase (Auth, Firestore, Functions, Hosting)
+- **Routing**: React Router v6
+- **Date Management**: date-fns
+- **Build Tool**: Vite
+
+## 📁 Estructura del Proyecto
+
+```
+bug-free/
+├── src/
+│   ├── components/        # Componentes reutilizables
+│   │   ├── Layout.tsx    # Layout principal con drawer
+│   │   └── ProtectedRoute.tsx  # HOC para rutas protegidas
+│   ├── contexts/         # Context API
+│   │   └── AuthContext.tsx  # Contexto de autenticación
+│   ├── pages/            # Páginas de la aplicación
+│   │   ├── Login.tsx     # Página de login
+│   │   ├── Dashboard.tsx # Dashboard principal
+│   │   ├── Empresas.tsx  # Gestión de empresas
+│   │   └── Farmacias.tsx # Gestión de farmacias
+│   ├── services/         # Servicios y lógica de negocio
+│   │   ├── firebase.ts   # Configuración de Firebase
+│   │   ├── empresasService.ts  # CRUD de empresas
+│   │   └── farmaciasService.ts # CRUD de farmacias
+│   ├── types/            # Definiciones TypeScript
+│   │   └── index.ts      # Tipos globales
+│   ├── App.tsx           # Componente raíz con rutas
+│   ├── main.tsx          # Punto de entrada
+│   └── theme.ts          # Tema personalizado de MUI
+├── firestore.rules       # Reglas de seguridad de Firestore
+├── firestore.indexes.json # Índices de Firestore
+├── firebase.json         # Configuración de Firebase
+└── package.json          # Dependencias del proyecto
+```
+
+## 🔧 Configuración Inicial
+
+### 1. Instalar Dependencias
+
+```bash
+npm install
+```
+
+### 2. Configurar Firebase
+
+1. Crea un proyecto en [Firebase Console](https://console.firebase.google.com/)
+2. Habilita los siguientes servicios:
+   - Authentication (Email/Password, Google, Apple)
+   - Firestore Database
+   - Cloud Functions
+   - Hosting
+3. Copia las credenciales de tu proyecto
+
+### 3. Variables de Entorno
+
+Crea un archivo `.env` en la raíz del proyecto basado en `.env.example`:
+
+```env
+VITE_FIREBASE_API_KEY=tu_api_key
+VITE_FIREBASE_AUTH_DOMAIN=tu_auth_domain
+VITE_FIREBASE_PROJECT_ID=tu_project_id
+VITE_FIREBASE_STORAGE_BUCKET=tu_storage_bucket
+VITE_FIREBASE_MESSAGING_SENDER_ID=tu_messaging_sender_id
+VITE_FIREBASE_APP_ID=tu_app_id
+VITE_FIREBASE_MEASUREMENT_ID=tu_measurement_id
+```
+
+### 4. Desplegar Reglas de Firestore
+
+```bash
+firebase deploy --only firestore:rules
+firebase deploy --only firestore:indexes
+```
+
+## 🚀 Desarrollo
+
+### Iniciar el servidor de desarrollo
+
+```bash
+npm run dev
+```
+
+La aplicación estará disponible en `http://localhost:5173`
+
+### Build para producción
+
+```bash
+npm run build
+```
+
+### Vista previa del build
+
+```bash
+npm run preview
+```
+
+## 🔐 Sistema de Autenticación
+
+### Roles de Usuario
+
+1. **Admin**
+   - Gestiona empresas y farmacias
+   - Crea y administra usuarios
+   - Acceso total al sistema
+
+2. **Gestor**
+   - Gestiona empleados de su farmacia
+   - Configura y genera horarios
+   - Accede a reportes y estadísticas
+
+3. **Empleado**
+   - Visualiza su calendario personal
+   - Consulta sus estadísticas de horas
+
+### Métodos de Autenticación
+
+- Email/Password
+- Google OAuth
+- Apple OAuth
+
+## 📊 Estructura de Datos (Firestore)
+
+### Colecciones Principales
+
+#### `/empresas/{empresaId}`
+```typescript
+{
+  cif: string
+  nombre: string
+  direccion: string
+  contacto: string
+  createdAt: timestamp
+  updatedAt: timestamp
+}
+```
+
+#### `/farmacias/{farmaciaId}`
+```typescript
+{
+  empresaId: string
+  cif: string
+  nombre: string
+  direccion: string
+  configuracion: {
+    horariosHabituales: Array<{dia: number, inicio: string, fin: string}>
+    jornadasGuardia: Array<{fecha: string, inicio: string, fin: string}>
+    festivosRegionales: Array<string>
+    trabajadoresMinimos: number
+  }
+  createdAt: timestamp
+  updatedAt: timestamp
+}
+```
+
+#### `/usuarios/{uid}`
+```typescript
+{
+  datosPersonales: {
+    nombre: string
+    apellidos: string
+    nif: string
+    email: string
+    telefono: string
+  }
+  rol: 'admin' | 'gestor' | 'empleado'
+  farmaciaId: string
+  empresaId: string
+  restricciones: {
+    horasMaximasDiarias: number
+    horasMaximasSemanales: number
+    horasMaximasMensuales: number
+    horasMaximasAnuales: number
+    diasFestivos: Array<string>
+  }
+  createdAt: timestamp
+  updatedAt: timestamp
+}
+```
+
+## 🔒 Seguridad
+
+- Autenticación obligatoria para todo acceso
+- Reglas de Firestore implementadas con control granular
+- Validación basada en roles
+- Los usuarios solo acceden a datos de su empresa/farmacia
+- HTTPS obligatorio en producción
+
+## 📝 Próximas Fases
+
+### Fase 2 (1.5 semanas)
+- CRUD de Empleados
+- Sistema de restricciones horarias
+- Panel de gestión de empleados
+
+### Fase 3 (2 semanas)
+- Configuración de horarios habituales
+- Configuración de guardias y festivos
+- Validaciones de configuración
+
+### Fase 4 (3 semanas)
+- Algoritmo de asignación automática de turnos
+- Sistema de scoring configurable
+- Detección de conflictos
+- Optimizadores (greedy, backtracking, genético)
+
+### Fase 5 (2 semanas)
+- Integración FullCalendar
+- Drag & drop con validaciones
+- Indicadores visuales de estado
+
+### Fase 6 (1.5 semanas)
+- Generación de PDF y Excel
+- Sistema de envío de emails
+- Interfaz de reportes
+
+### Fase 7 (1 semana)
+- Testing integral
+- Optimización de rendimiento
+- Deploy a producción
+
+## 👥 Autores
+
+Proyecto desarrollado para la gestión eficiente de horarios en farmacias.
+
+## 📄 Licencia
+
+Este proyecto es privado y confidencial.
