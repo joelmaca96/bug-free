@@ -15,8 +15,21 @@ const {onDocumentCreated} = require('firebase-functions/v2/firestore');
 const {onCall, HttpsError} = require('firebase-functions/v2/https');
 const admin = require('firebase-admin');
 const nodemailer = require('nodemailer');
+const cors = require('cors');
 
 admin.initializeApp();
+
+// Configurar CORS para permitir solicitudes desde localhost y producción
+const corsHandler = cors({
+  origin: [
+    'http://localhost:5173',
+    'http://localhost:3000',
+    'https://agapitodisousa.com',
+    'https://kroma-ai.web.app',
+    'https://kroma-ai.firebaseapp.com'
+  ],
+  credentials: true
+});
 
 // Helper function to get transporter (evaluated at runtime)
 function getTransporter() {
@@ -188,7 +201,15 @@ exports.sendEmpleadoCreatedEmail = onDocumentCreated('usuarios/{userId}', async 
 /**
  * Callable function para enviar horario por email
  */
-exports.sendScheduleEmail = onCall(async (request) => {
+exports.sendScheduleEmail = onCall({
+  cors: [
+    'http://localhost:5173',
+    'http://localhost:3000',
+    'https://agapitodisousa.com',
+    'https://kroma-ai.web.app',
+    'https://kroma-ai.firebaseapp.com'
+  ]
+}, async (request) => {
   // Verificar que el usuario está autenticado
   if (!request.auth) {
     throw new HttpsError(
@@ -271,7 +292,15 @@ exports.sendScheduleEmail = onCall(async (request) => {
  * Callable function para eliminar usuario de Firebase Auth
  * Solo puede ser llamada por SuperUser o Admin
  */
-exports.deleteUserAuth = onCall(async (request) => {
+exports.deleteUserAuth = onCall({
+  cors: [
+    'http://localhost:5173',
+    'http://localhost:3000',
+    'https://agapitodisousa.com',
+    'https://kroma-ai.web.app',
+    'https://kroma-ai.firebaseapp.com'
+  ]
+}, async (request) => {
   // Verificar que el usuario está autenticado
   if (!request.auth) {
     throw new HttpsError(
