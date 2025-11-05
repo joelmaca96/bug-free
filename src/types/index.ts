@@ -1,5 +1,5 @@
 // Usuario y roles
-export type UserRole = 'admin' | 'gestor' | 'empleado';
+export type UserRole = 'superuser' | 'admin' | 'gestor' | 'empleado';
 
 export interface DatosPersonales {
   nombre: string;
@@ -126,6 +126,53 @@ export interface ConfiguracionAlgoritmo {
   parametrosOptimizacion: ParametrosOptimizacion;
   version: number;
   fechaModificacion: Date;
+}
+
+// Conflictos
+export type SeveridadConflicto = 'critico' | 'alto' | 'medio' | 'bajo';
+
+export interface Conflicto {
+  id: string;
+  tipo: 'cobertura_insuficiente' | 'exceso_horas' | 'descanso_insuficiente' | 'turnos_consecutivos';
+  severidad: SeveridadConflicto;
+  descripcion: string;
+  fecha: string;
+  empleadoId?: string;
+  turnoId?: string;
+  sugerencias: string[];
+}
+
+// Slot de tiempo para asignación
+export interface TimeSlot {
+  fecha: string; // ISO date
+  horaInicio: number;
+  horaFin: number;
+  tipo: TipoTurno;
+  trabajadoresNecesarios: number;
+  asignaciones: string[]; // Array de empleadoIds
+}
+
+// Resultado del algoritmo
+export interface ResultadoAlgoritmo {
+  turnos: Turno[];
+  conflictos: Conflicto[];
+  estadisticas: {
+    empleadoId: string;
+    horasTrabajadas: number;
+    turnosAsignados: number;
+    guardiasAsignadas: number;
+    festivosAsignados: number;
+  }[];
+  scoreGlobal: number;
+  tiempoEjecucion: number; // milisegundos
+}
+
+// Tracking de horas por empleado
+export interface HorasEmpleado {
+  diarias: { [fecha: string]: number };
+  semanales: { [semana: string]: number };
+  mensuales: { [mes: string]: number };
+  anuales: { [año: string]: number };
 }
 
 // Auth Context
