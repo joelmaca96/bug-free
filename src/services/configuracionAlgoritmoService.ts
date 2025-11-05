@@ -59,6 +59,30 @@ export const getConfiguracionByUserId = async (
   userId: string
 ): Promise<ConfiguracionAlgoritmo | null> => {
   try {
+    // Validar que userId no sea vacío
+    if (!userId || userId.trim() === '') {
+      throw new Error('userId no puede estar vacío');
+    }
+
+    const docRef = doc(db, COLLECTION_NAME, userId);
+    const docSnap = await getDoc(docRef);
+
+    if (docSnap.exists()) {
+      return convertTimestamps({ id: docSnap.id, ...docSnap.data() });
+    }
+
+    return null;
+  } catch (error) {
+    console.error('Error getting configuracion by userId:', error);
+    throw error;
+  }
+};
+
+// Obtener configuración por farmacia
+export const getConfiguracionByFarmacia = async (
+  farmaciaId: string
+): Promise<ConfiguracionAlgoritmo | null> => {
+  try {
     // Validar que farmaciaId no sea vacío
     if (!farmaciaId || farmaciaId.trim() === '') {
       throw new Error('farmaciaId no puede estar vacío');
@@ -67,13 +91,14 @@ export const getConfiguracionByUserId = async (
     const q = query(collection(db, COLLECTION_NAME), where('farmaciaId', '==', farmaciaId));
     const querySnapshot = await getDocs(q);
 
-    if (docSnap.exists()) {
-      return convertTimestamps({ id: docSnap.id, ...docSnap.data() });
+    if (!querySnapshot.empty) {
+      const doc = querySnapshot.docs[0];
+      return convertTimestamps({ id: doc.id, ...doc.data() });
     }
 
     return null;
   } catch (error) {
-    console.error('Error getting configuracion:', error);
+    console.error('Error getting configuracion by farmacia:', error);
     throw error;
   }
 };
@@ -98,7 +123,7 @@ export const getOrCreateConfiguracion = async (
       const empresaId = farmacia?.empresaId;
 
       // Crear configuración por defecto
-      const defaultConfig = getDefaultConfig(farmaciaId);
+      const defaultConfig = getDefaultConfig(userId, farmaciaId);
       const docRef = doc(collection(db, COLLECTION_NAME));
 
       await setDoc(docRef, {
@@ -108,7 +133,7 @@ export const getOrCreateConfiguracion = async (
       });
 
       config = {
-        id: userId, // El ID es el userId
+        id: docRef.id,
         ...defaultConfig,
         empresaId,
       };
@@ -149,6 +174,7 @@ export const updateConfiguracion = async (
 
 // Crear nueva versión de configuración
 export const createConfiguracionVersion = async (
+  userId: string,
   farmaciaId: string,
   configuracion: Partial<Omit<ConfiguracionAlgoritmo, 'id' | 'farmaciaId' | 'version' | 'fechaModificacion'>>
 ): Promise<ConfiguracionAlgoritmo> => {
@@ -158,9 +184,10 @@ export const createConfiguracionVersion = async (
       throw new Error('farmaciaId no puede estar vacío');
     }
 
-    const currentConfig = await getOrCreateConfiguracion(farmaciaId);
+    const currentConfig = await getOrCreateConfiguracion(userId, farmaciaId);
 
     const newConfig = {
+      userId,
       farmaciaId,
       prioridades: configuracion.prioridades || currentConfig.prioridades,
       restricciones: configuracion.restricciones || currentConfig.restricciones,
