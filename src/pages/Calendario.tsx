@@ -93,7 +93,11 @@ const CalendarioPage: React.FC = () => {
       ]);
 
       setFarmacia(farmaciaData);
-      setEmpleados(empleadosData.filter(emp => emp.rol === 'empleado'));
+      // Incluir empleados y admin/gestores que estén marcados como trabajadores
+      setEmpleados(empleadosData.filter(emp =>
+        emp.rol === 'empleado' ||
+        ((emp.rol === 'admin' || emp.rol === 'gestor') && emp.incluirEnCalendario === true)
+      ));
 
       // Cargar turnos del mes actual
       await loadTurnosForMonth(new Date());

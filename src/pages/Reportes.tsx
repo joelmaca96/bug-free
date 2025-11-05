@@ -79,7 +79,11 @@ const ReportesPage: React.FC = () => {
       ]);
 
       setFarmacia(farmaciaData);
-      setEmpleados(empleadosData.filter(emp => emp.rol === 'empleado'));
+      // Incluir empleados y admin/gestores que estén marcados como trabajadores
+      setEmpleados(empleadosData.filter(emp =>
+        emp.rol === 'empleado' ||
+        ((emp.rol === 'admin' || emp.rol === 'gestor') && emp.incluirEnCalendario === true)
+      ));
     } catch (err) {
       setError('Error al cargar los datos');
       console.error(err);
