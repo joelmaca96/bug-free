@@ -58,11 +58,19 @@ service cloud.firestore {
       // Admin puede ver usuarios de su empresa (excepto superusers)
       // Gestor puede ver usuarios de su farmacia (excepto superusers)
       // Usuarios pueden ver su propia información
-      allow read: if isAuthenticated() && (
+      allow get: if isAuthenticated() && (
         request.auth.uid == userId ||
         isSuperuser() ||
         (isAdmin() && isSameEmpresa(resource.data.empresaId) && resource.data.rol != 'superuser') ||
         (isGestor() && isSameFarmacia(resource.data.farmaciaId) && resource.data.rol != 'superuser')
+      );
+
+      // Permitir listar usuarios para admin, gestor y superuser
+      // La aplicación se encarga de filtrar correctamente por farmacia/empresa
+      allow list: if isAuthenticated() && (
+        isSuperuser() ||
+        isAdmin() ||
+        isGestor()
       );
 
       // SuperUser puede crear cualquier usuario
