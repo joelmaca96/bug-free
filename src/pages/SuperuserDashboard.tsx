@@ -152,7 +152,7 @@ const SuperuserDashboard: React.FC = () => {
       field: 'adminId',
       headerName: 'Administrador',
       flex: 1,
-      renderCell: (params) => getAdminName(params.row.adminId),
+      valueGetter: (params) => getAdminName(params.row.adminId),
     },
     {
       field: 'actions',
@@ -184,13 +184,13 @@ const SuperuserDashboard: React.FC = () => {
       field: 'empresaId',
       headerName: 'Empresa',
       flex: 1,
-      renderCell: (params) => getEmpresaName(params.row.empresaId),
+      valueGetter: (params) => getEmpresaName(params.row.empresaId),
     },
     {
       field: 'gestorId',
       headerName: 'Gestor',
       flex: 1,
-      renderCell: (params) => getGestorName(params.row.gestorId),
+      valueGetter: (params) => getGestorName(params.row.gestorId),
     },
     {
       field: 'actions',
