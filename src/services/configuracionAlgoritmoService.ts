@@ -56,12 +56,12 @@ export const getConfiguracionByFarmacia = async (
   farmaciaId: string
 ): Promise<ConfiguracionAlgoritmo | null> => {
   try {
-    const q = query(collection(db, COLLECTION_NAME), where('farmaciaId', '==', farmaciaId));
-    const querySnapshot = await getDocs(q);
+    // Usar el farmaciaId como ID del documento para consistencia con las reglas de Firestore
+    const docRef = doc(db, COLLECTION_NAME, farmaciaId);
+    const docSnap = await getDoc(docRef);
 
-    if (!querySnapshot.empty) {
-      const doc = querySnapshot.docs[0];
-      return convertTimestamps({ id: doc.id, ...doc.data() });
+    if (docSnap.exists()) {
+      return convertTimestamps({ id: docSnap.id, ...docSnap.data() });
     }
 
     return null;
@@ -79,9 +79,9 @@ export const getOrCreateConfiguracion = async (
     let config = await getConfiguracionByFarmacia(farmaciaId);
 
     if (!config) {
-      // Crear configuración por defecto
+      // Crear configuración por defecto usando farmaciaId como ID del documento
       const defaultConfig = getDefaultConfig(farmaciaId);
-      const docRef = doc(collection(db, COLLECTION_NAME));
+      const docRef = doc(db, COLLECTION_NAME, farmaciaId);
 
       await setDoc(docRef, {
         ...defaultConfig,
@@ -89,7 +89,7 @@ export const getOrCreateConfiguracion = async (
       });
 
       config = {
-        id: docRef.id,
+        id: farmaciaId,
         ...defaultConfig,
       };
     }
