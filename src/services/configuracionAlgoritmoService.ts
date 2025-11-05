@@ -26,7 +26,8 @@ const convertTimestamps = (data: any): ConfiguracionAlgoritmo => {
 };
 
 // Configuración por defecto
-export const getDefaultConfig = (farmaciaId: string): Omit<ConfiguracionAlgoritmo, 'id'> => ({
+export const getDefaultConfig = (userId: string, farmaciaId: string): Omit<ConfiguracionAlgoritmo, 'id'> => ({
+  userId,
   farmaciaId,
   prioridades: {
     coberturaMinima: { peso: 100, activo: true },
@@ -51,13 +52,13 @@ export const getDefaultConfig = (farmaciaId: string): Omit<ConfiguracionAlgoritm
   fechaModificacion: new Date(),
 });
 
-// Obtener configuración por farmacia
-export const getConfiguracionByFarmacia = async (
-  farmaciaId: string
+// Obtener configuración por usuario (solo puede haber una por usuario)
+// Usamos userId como ID del documento para garantizar unicidad
+export const getConfiguracionByUserId = async (
+  userId: string
 ): Promise<ConfiguracionAlgoritmo | null> => {
   try {
-    // Usar el farmaciaId como ID del documento para consistencia con las reglas de Firestore
-    const docRef = doc(db, COLLECTION_NAME, farmaciaId);
+    const docRef = doc(db, COLLECTION_NAME, userId);
     const docSnap = await getDoc(docRef);
 
     if (docSnap.exists()) {
@@ -72,16 +73,18 @@ export const getConfiguracionByFarmacia = async (
 };
 
 // Obtener o crear configuración (devuelve default si no existe)
+// Usamos userId como ID del documento para garantizar que solo haya una configuración por usuario
 export const getOrCreateConfiguracion = async (
+  userId: string,
   farmaciaId: string
 ): Promise<ConfiguracionAlgoritmo> => {
   try {
-    let config = await getConfiguracionByFarmacia(farmaciaId);
+    let config = await getConfiguracionByUserId(userId);
 
     if (!config) {
-      // Crear configuración por defecto usando farmaciaId como ID del documento
-      const defaultConfig = getDefaultConfig(farmaciaId);
-      const docRef = doc(db, COLLECTION_NAME, farmaciaId);
+      // Crear configuración por defecto para el usuario usando userId como ID del documento
+      const defaultConfig = getDefaultConfig(userId, farmaciaId);
+      const docRef = doc(db, COLLECTION_NAME, userId); // Usar userId como ID del documento
 
       await setDoc(docRef, {
         ...defaultConfig,
@@ -89,7 +92,7 @@ export const getOrCreateConfiguracion = async (
       });
 
       config = {
-        id: farmaciaId,
+        id: userId, // El ID es el userId
         ...defaultConfig,
       };
     }
@@ -101,10 +104,10 @@ export const getOrCreateConfiguracion = async (
   }
 };
 
-// Actualizar configuración
+// Actualizar configuración (solo se permite una configuración por usuario)
 export const updateConfiguracion = async (
   id: string,
-  configuracion: Partial<Omit<ConfiguracionAlgoritmo, 'id' | 'farmaciaId' | 'fechaModificacion'>>
+  configuracion: Partial<Omit<ConfiguracionAlgoritmo, 'id' | 'userId' | 'farmaciaId' | 'fechaModificacion'>>
 ): Promise<void> => {
   try {
     const docRef = doc(db, COLLECTION_NAME, id);
@@ -127,33 +130,5 @@ export const updateConfiguracion = async (
   }
 };
 
-// Crear nueva versión de configuración
-export const createConfiguracionVersion = async (
-  farmaciaId: string,
-  configuracion: Partial<Omit<ConfiguracionAlgoritmo, 'id' | 'farmaciaId' | 'version' | 'fechaModificacion'>>
-): Promise<ConfiguracionAlgoritmo> => {
-  try {
-    const currentConfig = await getOrCreateConfiguracion(farmaciaId);
-
-    const newConfig = {
-      farmaciaId,
-      prioridades: configuracion.prioridades || currentConfig.prioridades,
-      restricciones: configuracion.restricciones || currentConfig.restricciones,
-      parametrosOptimizacion: configuracion.parametrosOptimizacion || currentConfig.parametrosOptimizacion,
-      version: currentConfig.version + 1,
-      fechaModificacion: serverTimestamp(),
-    };
-
-    const docRef = doc(collection(db, COLLECTION_NAME));
-    await setDoc(docRef, newConfig);
-
-    return {
-      id: docRef.id,
-      ...newConfig,
-      fechaModificacion: new Date(),
-    };
-  } catch (error) {
-    console.error('Error creating configuracion version:', error);
-    throw error;
-  }
-};
+// NOTA: Esta función ha sido eliminada porque solo se permite una configuración por usuario.
+// Para actualizar la configuración, usa updateConfiguracion() en su lugar.

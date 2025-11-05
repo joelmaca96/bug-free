@@ -39,11 +39,11 @@ const ConfiguracionAlgoritmoPage: React.FC = () => {
   }, [user]);
 
   const loadConfiguration = async () => {
-    if (!user?.farmaciaId) return;
+    if (!user?.uid || !user?.farmaciaId) return;
 
     try {
       setLoading(true);
-      const configuracion = await getOrCreateConfiguracion(user.farmaciaId);
+      const configuracion = await getOrCreateConfiguracion(user.uid, user.farmaciaId);
       setConfig(configuracion);
     } catch (err) {
       setError('Error al cargar la configuración');
@@ -85,9 +85,9 @@ const ConfiguracionAlgoritmoPage: React.FC = () => {
   };
 
   const handleReset = () => {
-    if (!user?.farmaciaId) return;
+    if (!user?.uid || !user?.farmaciaId) return;
 
-    const defaultConfig = getDefaultConfig(user.farmaciaId);
+    const defaultConfig = getDefaultConfig(user.uid, user.farmaciaId);
     setConfig({
       ...config!,
       prioridades: defaultConfig.prioridades,

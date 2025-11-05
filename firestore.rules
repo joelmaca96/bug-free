@@ -168,27 +168,34 @@ service cloud.firestore {
         (isGestor() && isSameFarmacia(farmaciaId));
     }
 
-    // Reglas para configuración del algoritmo
-    match /configuracionesAlgoritmo/{farmaciaId} {
+    // Reglas para configuración del algoritmo (una configuración por usuario)
+    match /configuracionesAlgoritmo/{userId} {
       // SuperUser puede leer todas las configuraciones
-      // Admin puede leer configuraciones de farmacias de su empresa
-      // Gestor puede leer configuración de su farmacia
+      // Admin puede leer configuraciones de usuarios de su empresa
+      // Gestor puede leer configuraciones de usuarios de su farmacia
+      // Los usuarios pueden leer su propia configuración
       allow read: if isAuthenticated() && (
+        request.auth.uid == userId ||
         isSuperuser() ||
-        (isAdmin() && farmaciaInUserEmpresa(farmaciaId)) ||
-        isSameFarmacia(farmaciaId)
+        (isAdmin() && get(/databases/$(database)/documents/usuarios/$(userId)).data.empresaId == getUserData().empresaId) ||
+        (isGestor() && get(/databases/$(database)/documents/usuarios/$(userId)).data.farmaciaId == getUserData().farmaciaId)
       );
 
       // SuperUser puede crear/modificar cualquier configuración
-      // Admin puede crear/modificar configuraciones de farmacias de su empresa
-      // Gestor puede crear/modificar configuración de su farmacia
-      allow create, update: if isSuperuser() ||
-        (isAdmin() && farmaciaInUserEmpresa(farmaciaId)) ||
-        (isGestor() && isSameFarmacia(farmaciaId));
+      // Admin puede crear/modificar configuraciones de usuarios de su empresa
+      // Gestor puede crear/modificar configuraciones de usuarios de su farmacia
+      // Los usuarios pueden crear/modificar su propia configuración
+      allow create, update: if isAuthenticated() && (
+        request.auth.uid == userId ||
+        isSuperuser() ||
+        (isAdmin() && get(/databases/$(database)/documents/usuarios/$(userId)).data.empresaId == getUserData().empresaId) ||
+        (isGestor() && get(/databases/$(database)/documents/usuarios/$(userId)).data.farmaciaId == getUserData().farmaciaId)
+      );
 
       // SuperUser puede eliminar cualquier configuración
-      // Admin puede eliminar configuraciones de farmacias de su empresa
-      allow delete: if isSuperuser() || (isAdmin() && farmaciaInUserEmpresa(farmaciaId));
+      // Admin puede eliminar configuraciones de usuarios de su empresa
+      allow delete: if isSuperuser() ||
+        (isAdmin() && get(/databases/$(database)/documents/usuarios/$(userId)).data.empresaId == getUserData().empresaId);
     }
 
     // Denegar acceso a cualquier otra colección no especificada
