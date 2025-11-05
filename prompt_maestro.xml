@@ -1,0 +1,399 @@
+Ejecuta el paso 4 de este desarrollo: <prompt> <proyecto> <nombre>AgapitoDiSousa</nombre> <descripcion_general> Aplicación web para gestionar y generar automáticamente horarios de empleados en farmacias, considerando restricciones laborales, guardias, festivos y cobertura mínima de personal. </descripcion_general> </proyecto>
+
+<objetivos>
+    <objetivo>Generar calendarios de turnos automáticamente respetando todas las restricciones legales y personales</objetivo>
+    <objetivo>Permitir edición visual mediante drag & drop de los turnos asignados</objetivo>
+    <objetivo>Gestionar múltiples empresas y farmacias con sus respectivos empleados</objetivo>
+    <objetivo>Exportar y enviar horarios por email en formato PDF/Excel</objetivo>
+</objetivos>
+
+<publico_objetivo>
+    Gestores y propietarios de farmacias con bajo nivel técnico. La interfaz debe ser intuitiva,
+    visual y autoexplicativa, minimizando la curva de aprendizaje.
+</publico_objetivo>
+
+<funcionalidades>
+    <funcionalidad>
+        <nombre>Sistema de Autenticación Multi-rol</nombre>
+        <descripcion>Login con email/password, Google y Apple. Roles: admin (gestiona empresas/farmacias),
+        gestor (configura horarios y empleados), empleado (solo visualiza). Firebase Auth.</descripcion>
+        <prioridad>Alta</prioridad>
+    </funcionalidad>
+
+    <funcionalidad>
+        <nombre>Gestión de Empresas y Farmacias</nombre>
+        <descripcion>CRUD completo. Empresas con CIF, nombre, dirección, contacto. Farmacias vinculadas
+        a empresas con sus propios datos y configuración específica (horarios, guardias, festivos,
+        trabajadores mínimos).</descripcion>
+        <prioridad>Alta</prioridad>
+    </funcionalidad>
+
+    <funcionalidad>
+        <nombre>Gestión de Empleados</nombre>
+        <descripcion>CRUD con campos: nombre, apellidos, NIF, email, teléfono, rol, farmacia asignada.
+        Configuración de restricciones: horas máximas (diarias, semanales, mensuales, anuales) y
+        días festivos personales.</descripcion>
+        <prioridad>Alta</prioridad>
+    </funcionalidad>
+
+    <funcionalidad>
+        <nombre>Configuración de Calendario Base</nombre>
+        <descripcion>Definir horarios habituales de apertura, jornadas de guardia con sus horarios
+        específicos, y festivos regionales. Esta configuración alimenta el algoritmo de asignación.</descripcion>
+        <prioridad>Alta</prioridad>
+    </funcionalidad>
+
+    <funcionalidad>
+        <nombre>Algoritmo de Asignación Automática de Turnos</nombre>
+        <descripcion>Motor configurable que genera calendarios respetando prioridades editables:
+        1. Cobertura mínima (peso: 100)
+        2. Límites de horas (peso: 90)
+        3. Distribución equitativa de guardias (peso: 70)
+        4. Distribución equitativa de festivos (peso: 60)
+        5. Minimizar cambios de turno (peso: 40)
+
+        Restricciones hard: descanso mínimo entre jornadas (12h), máximo turnos consecutivos (6),
+        horas máximas diarias (10h). Estrategias de optimización: greedy, backtracking, genético.
+
+        Sistema de scoring que evalúa cada asignación y resuelve conflictos automáticamente mediante
+        reasignación inteligente. Detecta y marca slots sin cobertura suficiente.</descripcion>
+        <prioridad>Alta</prioridad>
+    </funcionalidad>
+
+    <funcionalidad>
+        <nombre>Editor de Configuración del Algoritmo</nombre>
+        <descripcion>Interfaz para ajustar pesos de prioridades, activar/desactivar criterios,
+        modificar restricciones y seleccionar estrategia de optimización. Permite guardar versiones
+        y comparar resultados. Incluye modo "probar" para simular sin guardar.</descripcion>
+        <prioridad>Media</prioridad>
+    </funcionalidad>
+
+    <funcionalidad>
+        <nombre>Calendario Visual Interactivo</nombre>
+        <descripcion>Integración con FullCalendar para visualización mensual/semanal/diaria.
+        Drag & drop con validación en tiempo real (verifica restricciones antes de permitir el cambio).
+        Indicadores visuales de: conflictos (rojo), horas trabajadas acumuladas, cobertura insuficiente,
+        guardias, festivos. Vista por empleado o vista global de farmacia.</descripcion>
+        <prioridad>Alta</prioridad>
+    </funcionalidad>
+
+    <funcionalidad>
+        <nombre>Cálculo Automático de Horas</nombre>
+        <descripcion>Monitoreo en tiempo real de horas trabajadas por empleado (diarias, semanales,
+        mensuales, anuales). Alertas cuando se aproxima a límites. Dashboard con estadísticas
+        y gráficos de distribución.</descripcion>
+        <prioridad>Media</prioridad>
+    </funcionalidad>
+
+    <funcionalidad>
+        <nombre>Exportación y Envío de Horarios</nombre>
+        <descripcion>Generación de PDF/Excel del horario mensual o semanal por empleado.
+        Botón de envío directo por email desde la app usando Cloud Functions + Nodemailer.
+        Historial de reportes enviados. Template personalizable.</descripcion>
+        <prioridad>Media</prioridad>
+    </funcionalidad>
+
+    <funcionalidad>
+        <nombre>Detección de Conflictos</nombre>
+        <descripcion>Sistema que identifica y clasifica conflictos por severidad (crítico, alto, medio, bajo):
+        - Cobertura insuficiente en horario de apertura
+        - Empleado excede límites de horas
+        - Descanso insuficiente entre turnos
+        Panel de resolución con sugerencias automáticas.</descripcion>
+        <prioridad>Alta</prioridad>
+    </funcionalidad>
+</funcionalidades>
+
+<requisitos_tecnicos>
+    <plataforma>Web responsive (desktop y tablet)</plataforma>
+    <lenguajes>
+        <lenguaje>TypeScript</lenguaje>
+        <framework>React 18 con Vite</framework>
+        <ui>Material-UI (MUI) v5 + FullCalendar v6</ui>
+    </lenguajes>
+    <base_datos>
+        <tipo>Firebase (Firestore, Auth, Functions, Storage, Hosting)</tipo>
+        <especificacion>
+            Estructura Firestore:
+
+            /empresas/{empresaId}
+              - cif: string
+              - nombre: string
+              - direccion: string
+              - contacto: string
+
+            /farmacias/{farmaciaId}
+              - empresaId: string
+              - cif: string
+              - nombre: string
+              - direccion: string
+              - configuracion: {
+                  horariosHabituales: Array<{dia: number, inicio: string, fin: string}>,
+                  jornadasGuardia: Array<{fecha: string, inicio: string, fin: string}>,
+                  festivosRegionales: Array<string>,
+                  trabajadoresMinimos: number
+                }
+
+            /usuarios/{uid}
+              - datosPersonales: {nombre, apellidos, nif, email, telefono}
+              - rol: 'admin' | 'gestor' | 'empleado'
+              - farmaciaId: string
+              - empresaId: string
+              - restricciones: {
+                  horasMaximasDiarias: number,
+                  horasMaximasSemanales: number,
+                  horasMaximasMensuales: number,
+                  horasMaximasAnuales: number,
+                  diasFestivos: Array<string>
+                }
+
+            /calendarios/{farmaciaId}/turnos/{turnoId}
+              - empleadoId: string
+              - fecha: string
+              - horaInicio: number
+              - horaFin: number
+              - tipo: 'laboral' | 'guardia' | 'festivo'
+              - estado: 'confirmado' | 'pendiente' | 'conflicto'
+
+            /configuracionesAlgoritmo/{farmaciaId}
+              - prioridades: {
+                  coberturaMinima: {peso: number, activo: boolean},
+                  limitesHoras: {peso: number, activo: boolean},
+                  distribucionGuardias: {peso: number, activo: boolean},
+                  distribucionFestivos: {peso: number, activo: boolean},
+                  minimizarCambiosTurno: {peso: number, activo: boolean}
+                }
+              - restricciones: {
+                  descansoMinimoEntreJornadas: number,
+                  maxTurnosConsecutivos: number,
+                  maxHorasDiarias: number,
+                  permitirHorasExtra: boolean,
+                  margenSobrecarga: number
+                }
+              - parametrosOptimizacion: {
+                  maxIteraciones: number,
+                  umbralAceptacion: number,
+                  estrategia: 'greedy' | 'backtracking' | 'genetico'
+                }
+              - version: number
+              - fechaModificacion: timestamp
+
+            Cloud Functions:
+            - calcularDistribucionTurnos(farmaciaId, periodo, configId)
+            - validarRestriccionesHorarias(turno, empleadoId)
+            - generarReportePDF(farmaciaId, empleadoId, periodo)
+            - enviarHorarioPorEmail(reporteId, destinatario)
+        </especificacion>
+    </base_datos>
+    <librerias_adicionales>
+        <libreria>jsPDF + html2canvas para exportación PDF</libreria>
+        <libreria>xlsx para exportación Excel</libreria>
+        <libreria>nodemailer en Cloud Functions para envío de emails</libreria>
+        <libreria>date-fns para manejo de fechas</libreria>
+        <libreria>recharts para gráficos de estadísticas</libreria>
+    </librerias_adicionales>
+</requisitos_tecnicos>
+
+<interfaz_usuario>
+    <estilo_visual>Minimalista y profesional. Paleta de colores corporativa (azul/blanco).
+    Diseño limpio con espacios amplios. Iconos de Material Design. Uso estratégico de color
+    para estados (verde: OK, amarillo: advertencia, rojo: conflicto).</estilo_visual>
+
+    <navegacion>
+        Drawer lateral con navegación por roles:
+        - Admin: Empresas, Farmacias, Usuarios
+        - Gestor: Empleados, Configuración, Calendario, Reportes, Algoritmo
+        - Empleado: Mi Calendario, Mis Estadísticas
+
+        Breadcrumbs en header. Selector de farmacia activa si usuario tiene múltiples.
+    </navegacion>
+
+    <componentes_ui>
+        - DataGrid con filtros y búsqueda para listados
+        - Formularios con validación en tiempo real
+        - Calendar view (FullCalendar) con drag & drop
+        - Cards para métricas y estadísticas
+        - Dialogs para confirmaciones y formularios modales
+        - Steppers para procesos multi-paso (ej: configuración inicial)
+        - Chips para tags (roles, tipos de turno, estados)
+        - Progress bars para límites de horas
+        - Tooltips explicativos en configuración del algoritmo
+        - Alerts/Snackbars para feedback de acciones
+    </componentes_ui>
+</interfaz_usuario>
+
+<flujo_de_uso>
+    <paso>Usuario accede a login, se autentica con email/Google/Apple</paso>
+    <paso>Por defecto los nuevos usuarios son empleados sin Empresa ni Farmacia</paso>
+    <paso>SuperUser puede crear admins. El admin recibe email con notificacion de rol creado</paso>
+    <paso>Si es primer acceso de admin: wizard de configuración inicial (crear empresa, crear farmacia)</paso>
+    <paso>Si es primer acceso empleado o gestor: wizard de configuración usuario inicial (datos de usuario)</paso>
+    <paso>Admin crea farmacias y asigna gestores</paso>
+    <paso>Cuando admin crea un gestor, al gestor se le envía un mail para avisarle de su nuevo rol</paso>
+    <paso>Gestor configura: horarios habituales, guardias, festivos, trabajadores mínimos</paso>
+    <paso>Gestor añade empleados con sus datos y restricciones horarias</paso>
+    <paso>Cuando gestor crea empleado, el empleado recibe mail para avisarle de su nuevo rol</paso>
+    <paso>Gestor ajusta parámetros del algoritmo (opcional, usa valores por defecto)</paso>
+    <paso>Gestor genera calendario automático para período seleccionado (ej: mes/trimestre)</paso>
+    <paso>Sistema muestra resultado con indicación de conflictos si existen</paso>
+    <paso>Gestor revisa calendario en vista mensual/semanal</paso>
+    <paso>Si hay conflictos, puede: ejecutar optimización automática o editar manualmente con drag & drop</paso>
+    <paso>Una vez validado, confirma calendario</paso>
+    <paso>Exporta horarios individuales y envía por email a cada empleado</paso>
+    <paso>Empleados acceden a su panel y visualizan su calendario personal</paso>
+</flujo_de_uso>
+
+<algoritmo_core>
+    <descripcion>
+        El algoritmo de asignación es el corazón de la aplicación. Debe implementarse como:
+
+        1. INICIALIZACIÓN:
+           - Cargar configuración de farmacia y empleados
+           - Generar slots de tiempo necesarios según horarios definidos
+           - Inicializar estructuras de tracking de horas
+
+        2. ASIGNACIÓN INICIAL (Greedy):
+           - Por cada slot temporal:
+             * Filtrar candidatos elegibles (aplica restricciones hard)
+             * Calcular score de aptitud para cada candidato
+             * Asignar empleados con mejor score hasta cubrir mínimo
+
+        3. FUNCIÓN DE SCORING (ponderada por pesos configurables):
+           score = Σ(factor_i * peso_i) donde:
+           - Factor cobertura: bonus si slot necesita personal
+           - Factor límites: penalización proporcional a cercanía con límites
+           - Factor guardias: favorece distribución equitativa
+           - Factor festivos: favorece distribución equitativa
+           - Factor consistencia: bonus por mantener patrones de turno
+
+        4. VALIDACIONES HARD (filtros previos):
+           - No conflicto horario con otro turno
+           - Descanso mínimo respetado (12h entre turnos)
+           - Máximo turnos consecutivos (6 días)
+           - Límites diarios no excedidos
+           - No es día festivo del empleado
+
+        5. OPTIMIZACIÓN (si hay conflictos):
+           - Estrategia Greedy: intercambio de turnos iterativo
+           - Estrategia Backtracking: búsqueda recursiva de solución válida
+           - Estrategia Genética: población de soluciones con mutación/crossover
+
+        6. OUTPUT:
+           - Calendario completo con turnos asignados
+           - Lista de conflictos no resueltos (si existen)
+           - Estadísticas por empleado
+           - Score global de la solución
+    </descripcion>
+
+    <configurabilidad>
+        Todos los pesos, restricciones y estrategia deben ser editables por UI.
+        Incluir valores por defecto sensatos. Permitir guardar configuraciones como plantillas.
+    </configurabilidad>
+</algoritmo_core>
+
+<criterios_de_exito>
+    <criterio>Generación automática de calendario válido en menos de 30 segundos para farmacia con 20 empleados y período de 1 mes</criterio>
+    <criterio>Interfaz de calendario permite drag & drop fluido sin lag (60fps)</criterio>
+    <criterio>Exportación PDF/Excel generada en menos de 5 segundos</criterio>
+    <criterio>Detección de conflictos en tiempo real (validación bajo 500ms)</criterio>
+    <criterio>Sistema resuelve automáticamente al menos 80% de conflictos no críticos</criterio>
+    <criterio>Interfaz intuitiva: usuario gestor puede generar primer calendario sin documentación</criterio>
+</criterios_de_exito>
+
+<restricciones>
+    <tiempo>Desarrollo estimado: 13 semanas (ver fases en plan de desarrollo)</tiempo>
+    <seguridad>
+        - Autenticación obligatoria para todo acceso
+        - Reglas Firestore: usuarios solo ven datos de su farmacia/empresa
+        - Roles con permisos granulares (superuser/admin/gestor/empleado)
+        - Validación de datos en cliente y servidor (Functions)
+        - HTTPS obligatorio
+        - Datos personales según GDPR
+    </seguridad>
+    <escalabilidad>Diseñar para soportar hasta 100 empleados por farmacia y 50 farmacias por empresa</escalabilidad>
+</restricciones>
+
+<plan_desarrollo>
+    <fase numero="1" duracion="2 semanas">
+        Setup proyecto (React + Vite + TypeScript + MUI)
+        Firebase setup (Auth, Firestore, Functions, Hosting)
+        Sistema de autenticación completo
+        CRUD Empresas y Farmacias con rutas protegidas
+    </fase>
+    <fase numero="2" duracion="1.5 semanas">
+        CRUD Empleados con formulario completo
+        Sistema de restricciones horarias
+        Panel de gestión de empleados
+    </fase>
+    <fase numero="3" duracion="2 semanas">
+        Configuración de horarios habituales
+        Configuración de guardias y festivos
+        Validaciones de configuración
+    </fase>
+    <fase numero="4" duracion="3 semanas">
+        Implementación del algoritmo de asignación (las 3 estrategias)
+        Sistema de scoring configurable
+        Detección y clasificación de conflictos
+        Optimizadores (greedy, backtracking, genético)
+        Implemenatacion de dashboard de superuser
+        Implementacion flujo creacion admins
+    </fase>
+    <fase numero="5" duracion="2 semanas">
+        Integración FullCalendar con datos reales
+        Drag & drop con validaciones
+        Vistas múltiples (mes/semana/día)
+        Indicadores visuales de estado
+    </fase>
+    <fase numero="6" duracion="1.5 semanas">
+        Generación PDF y Excel
+        Cloud Function para envío emails
+        Interfaz de reportes
+    </fase>
+    <fase numero="7" duracion="1 semana">
+        Testing integral
+        Optimización rendimiento
+        Deploy a producción
+    </fase>
+</plan_desarrollo>
+
+<entregables>
+    <entregable>
+        <tipo>Código fuente completo</tipo>
+        <descripcion>Repositorio Git con estructura modular, React components, Firebase Functions,
+        reglas Firestore, configuración completa. Código comentado en secciones críticas
+        (especialmente algoritmo).</descripcion>
+    </entregable>
+    <entregable>
+        <tipo>Documentación técnica</tipo>
+        <descripcion>README con setup, arquitectura, estructura de datos, explicación del algoritmo,
+        guía de despliegue, variables de entorno necesarias.</descripcion>
+    </entregable>
+    <entregable>
+        <tipo>Documentación de usuario</tipo>
+        <descripcion>Guía paso a paso para: configuración inicial, gestión de empleados,
+        generación de calendario, interpretación de conflictos, ajuste del algoritmo.</descripcion>
+    </entregable>
+    <entregable>
+        <tipo>Scripts de inicialización</tipo>
+        <descripcion>Scripts para crear datos de prueba (empresas, farmacias, empleados ejemplo)
+        y configuración por defecto del algoritmo.</descripcion>
+    </entregable>
+</entregables>
+
+<instrucciones_para_la_ia>
+    <nivel_detalle>Extenso - implementar completamente todas las funcionalidades descritas</nivel_detalle>
+    <formato_salida>Código funcional completo con estructura modular y profesional</formato_salida>
+    <estilo_respuesta>Técnico pero con comentarios explicativos en secciones complejas</estilo_respuesta>
+    <otros>
+        - Prioriza claridad y mantenibilidad del código
+        - Implementa TypeScript con tipado estricto
+        - Separa lógica de negocio de componentes UI
+        - Usa custom hooks para lógica reutilizable
+        - Implementa error handling robusto
+        - El algoritmo debe ser el foco principal - implementarlo completo y optimizado
+        - Añade PropTypes y validaciones en formularios
+        - Sigue convenciones de React y MUI
+        - Organiza código en carpetas: /components, /pages, /hooks, /utils, /types, /services, /functions
+        - Incluye archivos de configuración: .env.example, firebase.json, firestore.rules
+    </otros>
+</instrucciones_para_la_ia>

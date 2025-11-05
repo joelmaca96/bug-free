@@ -21,6 +21,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { getFarmaciaById, updateFarmacia } from '@/services/farmaciasService';
 import { Farmacia, HorarioHabitual, JornadaGuardia } from '@/types';
 import { validarConfiguracionFarmacia } from '@/utils/scheduleValidations';
+import { migrarSiEsNecesario } from '@/utils/migrateGuardias';
 import HorariosHabituales from '@/components/HorariosHabituales';
 import JornadasGuardia from '@/components/JornadasGuardia';
 import FestivosRegionales from '@/components/FestivosRegionales';
@@ -71,7 +72,16 @@ const ConfiguracionFarmacia: React.FC = () => {
       const farmaciaData = await getFarmaciaById(user.farmaciaId);
       if (farmaciaData) {
         setFarmacia(farmaciaData);
-        setConfiguracion(farmaciaData.configuracion);
+
+        // Migrar guardias del formato antiguo al nuevo si es necesario
+        const guardiasActualizadas = migrarSiEsNecesario(
+          farmaciaData.configuracion.jornadasGuardia || []
+        );
+
+        setConfiguracion({
+          ...farmaciaData.configuracion,
+          jornadasGuardia: guardiasActualizadas,
+        });
       }
     } catch (error) {
       showSnackbar('Error al cargar configuración', 'error');

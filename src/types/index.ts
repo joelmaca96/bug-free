@@ -47,9 +47,10 @@ export interface HorarioHabitual {
 }
 
 export interface JornadaGuardia {
-  fecha: string; // ISO date
-  inicio: string; // HH:mm
-  fin: string; // HH:mm
+  fechaInicio: string; // ISO date
+  horaInicio: string; // HH:mm
+  fechaFin: string; // ISO date
+  horaFin: string; // HH:mm
 }
 
 export interface ConfiguracionFarmacia {

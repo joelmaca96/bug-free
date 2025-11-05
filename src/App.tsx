@@ -11,6 +11,7 @@ import Layout from './components/Layout';
 
 // Pages
 import Login from './pages/Login';
+import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
 import Empresas from './pages/Empresas';
 import Farmacias from './pages/Farmacias';
@@ -24,8 +25,9 @@ const App: React.FC = () => {
       <AuthProvider>
         <Router>
           <Routes>
-            {/* Ruta pública */}
+            {/* Rutas públicas */}
             <Route path="/login" element={<Login />} />
+            <Route path="/register" element={<Register />} />
 
             {/* Rutas protegidas con Layout */}
             <Route

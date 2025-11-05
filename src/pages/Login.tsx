@@ -9,11 +9,12 @@ import {
   Divider,
   Alert,
   CircularProgress,
+  Link as MuiLink,
 } from '@mui/material';
 import GoogleIcon from '@mui/icons-material/Google';
 import AppleIcon from '@mui/icons-material/Apple';
 import { useAuth } from '@/contexts/AuthContext';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 
 const Login: React.FC = () => {
   const [email, setEmail] = useState('');
@@ -142,9 +143,19 @@ const Login: React.FC = () => {
             startIcon={<AppleIcon />}
             onClick={handleAppleLogin}
             disabled={loading}
+            sx={{ mb: 2 }}
           >
             Continuar con Apple
           </Button>
+
+          <Box sx={{ mt: 2, textAlign: 'center' }}>
+            <Typography variant="body2">
+              ¿No tienes cuenta?{' '}
+              <MuiLink component={Link} to="/register" underline="hover">
+                Regístrate
+              </MuiLink>
+            </Typography>
+          </Box>
         </Paper>
       </Box>
     </Container>

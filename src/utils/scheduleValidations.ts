@@ -102,30 +102,56 @@ export const validarJornadasGuardia = (
 
   // Validar cada jornada
   jornadas.forEach((jornada, index) => {
-    // Validar fecha
-    if (!isValidDate(jornada.fecha)) {
-      errores.push(`Guardia ${index + 1}: Fecha inválida`);
+    // Validar fecha de inicio
+    if (!isValidDate(jornada.fechaInicio)) {
+      errores.push(`Guardia ${index + 1}: Fecha de inicio inválida`);
     }
 
-    // Validar horarios
-    const validacion = validarHorario(
-      jornada.inicio,
-      jornada.fin,
-      `Guardia ${index + 1}`
-    );
-    errores.push(...validacion.errores);
+    // Validar fecha de fin
+    if (!isValidDate(jornada.fechaFin)) {
+      errores.push(`Guardia ${index + 1}: Fecha de fin inválida`);
+    }
+
+    // Validar que la fecha/hora de fin sea posterior a la de inicio
+    const fechaInicioMs = new Date(`${jornada.fechaInicio}T${jornada.horaInicio}`).getTime();
+    const fechaFinMs = new Date(`${jornada.fechaFin}T${jornada.horaFin}`).getTime();
+
+    if (fechaFinMs <= fechaInicioMs) {
+      errores.push(
+        `Guardia ${index + 1}: La fecha/hora de fin debe ser posterior a la de inicio`
+      );
+    }
+
+    // Validar que la duración no sea excesiva (máximo 48 horas)
+    const duracionHoras = (fechaFinMs - fechaInicioMs) / (1000 * 60 * 60);
+    if (duracionHoras > 48) {
+      errores.push(
+        `Guardia ${index + 1}: La duración no puede exceder 48 horas (${duracionHoras.toFixed(1)}h)`
+      );
+    }
   });
 
-  // Validar que no haya fechas duplicadas
-  const fechas = jornadas.map((j) => j.fecha);
-  const fechasDuplicadas = fechas.filter(
-    (fecha, index) => fechas.indexOf(fecha) !== index
-  );
+  // Validar que no haya solapamientos entre guardias
+  for (let i = 0; i < jornadas.length; i++) {
+    for (let j = i + 1; j < jornadas.length; j++) {
+      const g1 = jornadas[i];
+      const g2 = jornadas[j];
 
-  if (fechasDuplicadas.length > 0) {
-    errores.push(
-      `Fechas duplicadas en guardias: ${fechasDuplicadas.join(', ')}`
-    );
+      const g1InicioMs = new Date(`${g1.fechaInicio}T${g1.horaInicio}`).getTime();
+      const g1FinMs = new Date(`${g1.fechaFin}T${g1.horaFin}`).getTime();
+      const g2InicioMs = new Date(`${g2.fechaInicio}T${g2.horaInicio}`).getTime();
+      const g2FinMs = new Date(`${g2.fechaFin}T${g2.horaFin}`).getTime();
+
+      // Verificar solapamiento
+      if (
+        (g1InicioMs < g2FinMs && g1FinMs > g2InicioMs) ||
+        (g2InicioMs < g1FinMs && g2FinMs > g1InicioMs)
+      ) {
+        errores.push(
+          `Las guardias ${i + 1} y ${j + 1} se solapan en el tiempo`
+        );
+      }
+    }
   }
 
   return {

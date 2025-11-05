@@ -38,10 +38,14 @@ const JornadasGuardia: React.FC<JornadasGuardiaProps> = ({
 
   const handleAdd = () => {
     const today = new Date().toISOString().split('T')[0];
+    const tomorrow = new Date(new Date(today).getTime() + 24 * 60 * 60 * 1000)
+      .toISOString()
+      .split('T')[0];
     const newGuardia: JornadaGuardia = {
-      fecha: today,
-      inicio: '20:00',
-      fin: '09:00',
+      fechaInicio: today,
+      horaInicio: '20:00',
+      fechaFin: tomorrow,
+      horaFin: '09:00',
     };
     onChange([...guardias, newGuardia]);
   };
@@ -65,40 +69,40 @@ const JornadasGuardia: React.FC<JornadasGuardiaProps> = ({
     newGuardias[index] = { ...newGuardias[index], [field]: value };
     onChange(newGuardias);
 
-    // Validar si se cambió inicio o fin
-    if (field === 'inicio' || field === 'fin') {
-      const guardia = newGuardias[index];
-      const validacion = validarHorario(guardia.inicio, guardia.fin, 'Guardia');
+    // Validar fechas y horas
+    const guardia = newGuardias[index];
+    const fechaInicioMs = new Date(`${guardia.fechaInicio}T${guardia.horaInicio}`).getTime();
+    const fechaFinMs = new Date(`${guardia.fechaFin}T${guardia.horaFin}`).getTime();
 
-      if (!validacion.valido) {
-        setErrors({ ...errors, [index]: validacion.errores.join(', ') });
-      } else {
-        const newErrors = { ...errors };
-        delete newErrors[index];
-        setErrors(newErrors);
-      }
+    if (fechaFinMs <= fechaInicioMs) {
+      setErrors({
+        ...errors,
+        [index]: 'La fecha/hora de fin debe ser posterior a la de inicio'
+      });
+    } else {
+      const newErrors = { ...errors };
+      delete newErrors[index];
+      setErrors(newErrors);
     }
   };
 
-  const calculateDuration = (inicio: string, fin: string): string => {
-    if (!inicio || !fin) return '0';
-
-    const [hi, mi] = inicio.split(':').map(Number);
-    const [hf, mf] = fin.split(':').map(Number);
-
-    let totalHoras = hf - hi + (mf - mi) / 60;
-
-    // Si el fin es menor que el inicio, asumimos que cruza medianoche
-    if (totalHoras < 0) {
-      totalHoras += 24;
+  const calculateDuration = (guardia: JornadaGuardia): string => {
+    if (!guardia.fechaInicio || !guardia.horaInicio || !guardia.fechaFin || !guardia.horaFin) {
+      return '0';
     }
 
-    return totalHoras.toFixed(1);
+    const fechaInicioMs = new Date(`${guardia.fechaInicio}T${guardia.horaInicio}`).getTime();
+    const fechaFinMs = new Date(`${guardia.fechaFin}T${guardia.horaFin}`).getTime();
+
+    const duracionMs = fechaFinMs - fechaInicioMs;
+    const duracionHoras = duracionMs / (1000 * 60 * 60);
+
+    return duracionHoras.toFixed(1);
   };
 
-  // Ordenar guardias por fecha
+  // Ordenar guardias por fecha de inicio
   const guardiasOrdenadas = [...guardias].sort((a, b) =>
-    a.fecha.localeCompare(b.fecha)
+    a.fechaInicio.localeCompare(b.fechaInicio)
   );
 
   return (
@@ -138,8 +142,9 @@ const JornadasGuardia: React.FC<JornadasGuardiaProps> = ({
             <Table>
               <TableHead>
                 <TableRow>
-                  <TableCell>Fecha</TableCell>
+                  <TableCell>Fecha Inicio</TableCell>
                   <TableCell>Hora Inicio</TableCell>
+                  <TableCell>Fecha Fin</TableCell>
                   <TableCell>Hora Fin</TableCell>
                   <TableCell>Duración</TableCell>
                   <TableCell>Tipo</TableCell>
@@ -150,11 +155,12 @@ const JornadasGuardia: React.FC<JornadasGuardiaProps> = ({
                 {guardiasOrdenadas.map((guardia) => {
                   const originalIndex = guardias.findIndex(
                     (g) =>
-                      g.fecha === guardia.fecha &&
-                      g.inicio === guardia.inicio &&
-                      g.fin === guardia.fin
+                      g.fechaInicio === guardia.fechaInicio &&
+                      g.horaInicio === guardia.horaInicio &&
+                      g.fechaFin === guardia.fechaFin &&
+                      g.horaFin === guardia.horaFin
                   );
-                  const duracion = calculateDuration(guardia.inicio, guardia.fin);
+                  const duracion = calculateDuration(guardia);
                   const esDuracionLarga = parseFloat(duracion) > 12;
 
                   return (
@@ -163,21 +169,21 @@ const JornadasGuardia: React.FC<JornadasGuardiaProps> = ({
                         <TextField
                           type="date"
                           size="small"
-                          value={guardia.fecha}
+                          value={guardia.fechaInicio}
                           onChange={(e) =>
-                            handleChange(originalIndex, 'fecha', e.target.value)
+                            handleChange(originalIndex, 'fechaInicio', e.target.value)
                           }
                           InputLabelProps={{ shrink: true }}
-                          helperText={formatDateDisplay(guardia.fecha)}
+                          helperText={formatDateDisplay(guardia.fechaInicio)}
                         />
                       </TableCell>
                       <TableCell>
                         <TextField
                           select
                           size="small"
-                          value={guardia.inicio}
+                          value={guardia.horaInicio}
                           onChange={(e) =>
-                            handleChange(originalIndex, 'inicio', e.target.value)
+                            handleChange(originalIndex, 'horaInicio', e.target.value)
                           }
                           error={!!errors[originalIndex]}
                           sx={{ minWidth: 100 }}
@@ -191,11 +197,23 @@ const JornadasGuardia: React.FC<JornadasGuardiaProps> = ({
                       </TableCell>
                       <TableCell>
                         <TextField
+                          type="date"
+                          size="small"
+                          value={guardia.fechaFin}
+                          onChange={(e) =>
+                            handleChange(originalIndex, 'fechaFin', e.target.value)
+                          }
+                          InputLabelProps={{ shrink: true }}
+                          helperText={formatDateDisplay(guardia.fechaFin)}
+                        />
+                      </TableCell>
+                      <TableCell>
+                        <TextField
                           select
                           size="small"
-                          value={guardia.fin}
+                          value={guardia.horaFin}
                           onChange={(e) =>
-                            handleChange(originalIndex, 'fin', e.target.value)
+                            handleChange(originalIndex, 'horaFin', e.target.value)
                           }
                           error={!!errors[originalIndex]}
                           sx={{ minWidth: 100 }}
@@ -255,8 +273,9 @@ const JornadasGuardia: React.FC<JornadasGuardiaProps> = ({
 
           <Alert severity="info" sx={{ mt: 2 }}>
             <Typography variant="body2">
-              <strong>Nota:</strong> Las guardias pueden cruzar medianoche. Por
-              ejemplo, 20:00 - 09:00 representa una guardia nocturna de 13 horas.
+              <strong>Nota:</strong> Las guardias pueden abarcar múltiples días. Por
+              ejemplo, una guardia nocturna puede iniciar el día 15 a las 20:00 y
+              finalizar el día 16 a las 09:00 (13 horas de duración).
             </Typography>
           </Alert>
         </>

@@ -41,8 +41,8 @@ service cloud.firestore {
         (isGestor() && isSameFarmacia(resource.data.farmaciaId))
       );
 
-      // Solo admins pueden crear usuarios
-      allow create: if isAdmin();
+      // Permitir crear su propio perfil al registrarse o admins pueden crear usuarios
+      allow create: if (isAuthenticated() && request.auth.uid == userId) || isAdmin();
 
       // Los usuarios pueden actualizar su propia información (excepto rol y asignaciones)
       // Los admins y gestores pueden actualizar usuarios de su farmacia
