@@ -4,7 +4,7 @@ Aplicación web para gestionar y generar automáticamente horarios de empleados 
 
 ## 🚀 Estado del Proyecto
 
-**Fase 1 y Fase 2 Completadas** - Setup del proyecto y gestión de empleados
+**Fases 1, 2 y 3 Completadas** - Sistema funcional con configuración de horarios
 
 ### ✅ Funcionalidades Implementadas
 
@@ -40,6 +40,39 @@ Aplicación web para gestionar y generar automáticamente horarios de empleados 
 - ✅ Filtrado de empleados por farmacia y empresa
 - ✅ Control de acceso según rol (admin ve todos, gestor solo su farmacia)
 
+**Fase 3 - Configuración de Horarios y Calendario:**
+- ✅ Página de Configuración de Farmacia con tabs
+- ✅ Horarios Habituales:
+  - Configuración por día de la semana (Lun-Dom)
+  - Múltiples franjas horarias por día
+  - Validación de no solapamiento
+  - Resumen visual semanal con chips
+  - Cálculo automático de duración
+- ✅ Jornadas de Guardia:
+  - Configuración de fechas específicas
+  - Horarios especiales (puede cruzar medianoche)
+  - Ordenamiento cronológico automático
+  - Indicador de guardias 24h vs nocturnas
+- ✅ Festivos Regionales:
+  - Añadir fechas de festivos
+  - Sugerencias de festivos nacionales de España
+  - Agrupación por año
+  - Validación de fechas no duplicadas
+- ✅ Configuración General:
+  - Trabajadores mínimos por turno (1-50)
+  - Tooltips informativos
+- ✅ Utilidades de fecha/hora:
+  - Validación de formato HH:mm
+  - Conversión decimal de horas
+  - Cálculo de duraciones
+  - Detección de solapamientos
+  - Formato de fechas en español
+- ✅ Validaciones completas:
+  - Coherencia entre horarios
+  - Duración mínima de 30 minutos
+  - Límites lógicos (24h max)
+  - Fechas válidas en ISO format
+
 ## 🛠️ Tecnologías
 
 - **Frontend**: React 18 + TypeScript + Vite
@@ -57,7 +90,10 @@ bug-free/
 │   ├── components/        # Componentes reutilizables
 │   │   ├── Layout.tsx    # Layout principal con drawer
 │   │   ├── ProtectedRoute.tsx  # HOC para rutas protegidas
-│   │   └── EmpleadoStats.tsx   # Estadísticas de empleado (Fase 2)
+│   │   ├── EmpleadoStats.tsx   # Estadísticas de empleado (Fase 2)
+│   │   ├── HorariosHabituales.tsx  # Config horarios (Fase 3)
+│   │   ├── JornadasGuardia.tsx     # Config guardias (Fase 3)
+│   │   └── FestivosRegionales.tsx  # Config festivos (Fase 3)
 │   ├── contexts/         # Context API
 │   │   └── AuthContext.tsx  # Contexto de autenticación
 │   ├── pages/            # Páginas de la aplicación
@@ -65,14 +101,17 @@ bug-free/
 │   │   ├── Dashboard.tsx # Dashboard principal
 │   │   ├── Empresas.tsx  # Gestión de empresas
 │   │   ├── Farmacias.tsx # Gestión de farmacias
-│   │   └── Empleados.tsx # Gestión de empleados (Fase 2)
+│   │   ├── Empleados.tsx # Gestión de empleados (Fase 2)
+│   │   └── ConfiguracionFarmacia.tsx  # Configuración (Fase 3)
 │   ├── services/         # Servicios y lógica de negocio
 │   │   ├── firebase.ts   # Configuración de Firebase
 │   │   ├── empresasService.ts  # CRUD de empresas
 │   │   ├── farmaciasService.ts # CRUD de farmacias
 │   │   └── usuariosService.ts  # CRUD de usuarios (Fase 2)
 │   ├── utils/            # Utilidades
-│   │   └── validations.ts # Validaciones de formularios (Fase 2)
+│   │   ├── validations.ts # Validaciones de formularios (Fase 2)
+│   │   ├── dateTimeUtils.ts    # Utilidades de fecha/hora (Fase 3)
+│   │   └── scheduleValidations.ts  # Validaciones horarios (Fase 3)
 │   ├── types/            # Definiciones TypeScript
 │   │   └── index.ts      # Tipos globales
 │   ├── App.tsx           # Componente raíz con rutas
@@ -243,10 +282,10 @@ npm run preview
 - ✅ Sistema de restricciones horarias
 - ✅ Panel de gestión de empleados
 
-### Fase 3 (2 semanas)
-- Configuración de horarios habituales
-- Configuración de guardias y festivos
-- Validaciones de configuración
+### ✅ Fase 3 (2 semanas) - COMPLETADA
+- ✅ Configuración de horarios habituales
+- ✅ Configuración de guardias y festivos
+- ✅ Validaciones de configuración
 
 ### Fase 4 (3 semanas)
 - Algoritmo de asignación automática de turnos

@@ -15,6 +15,7 @@ import Dashboard from './pages/Dashboard';
 import Empresas from './pages/Empresas';
 import Farmacias from './pages/Farmacias';
 import Empleados from './pages/Empleados';
+import ConfiguracionFarmacia from './pages/ConfiguracionFarmacia';
 
 const App: React.FC = () => {
   return (
@@ -68,6 +69,17 @@ const App: React.FC = () => {
                 <ProtectedRoute allowedRoles={['gestor', 'admin']}>
                   <Layout>
                     <Empleados />
+                  </Layout>
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="/configuracion"
+              element={
+                <ProtectedRoute allowedRoles={['gestor', 'admin']}>
+                  <Layout>
+                    <ConfiguracionFarmacia />
                   </Layout>
                 </ProtectedRoute>
               }
