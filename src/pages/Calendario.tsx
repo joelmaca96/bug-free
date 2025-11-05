@@ -437,6 +437,26 @@ const CalendarioPage: React.FC = () => {
           }}
           height="auto"
         />
+
+        {/* Leyenda de colores */}
+        <Box sx={{ mt: 2, display: 'flex', gap: 3, flexWrap: 'wrap', justifyContent: 'center' }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <Box sx={{ width: 20, height: 20, backgroundColor: '#9575cd', borderRadius: 1, border: '2px solid #5e35b1' }} />
+            <Typography variant="body2">Turno Laboral</Typography>
+          </Box>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <Box sx={{ width: 20, height: 20, backgroundColor: '#42a5f5', borderRadius: 1, border: '2px solid #1976d2' }} />
+            <Typography variant="body2">Guardia</Typography>
+          </Box>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <Box sx={{ width: 20, height: 20, backgroundColor: '#66bb6a', borderRadius: 1, border: '2px solid #388e3c' }} />
+            <Typography variant="body2">Festivo</Typography>
+          </Box>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <Box sx={{ width: 20, height: 20, backgroundColor: '#ef5350', borderRadius: 1, border: '2px solid #c62828' }} />
+            <Typography variant="body2">Conflicto</Typography>
+          </Box>
+        </Box>
       </Paper>
 
       {/* Dialog: Generar Calendario */}

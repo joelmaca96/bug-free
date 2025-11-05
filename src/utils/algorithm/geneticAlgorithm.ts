@@ -372,9 +372,10 @@ export class GeneticAlgorithm {
         });
       }
 
-      // Verificar si hay jornada de guardia (agregar ADEMÁS del horario habitual)
+      // Verificar si hay jornada de guardia que INICIA en este día
+      // Solo crear el slot en el día de inicio para evitar duplicados
       const jornadaGuardia = this.farmacia.configuracion.jornadasGuardia.find(
-        (jg) => fechaStr >= jg.fechaInicio && fechaStr <= jg.fechaFin
+        (jg) => fechaStr === jg.fechaInicio
       );
 
       if (jornadaGuardia) {
