@@ -26,6 +26,8 @@ import {
   ListItem,
   ListItemText,
   Divider,
+  FormControlLabel,
+  Checkbox,
 } from '@mui/material';
 import FullCalendar from '@fullcalendar/react';
 import dayGridPlugin from '@fullcalendar/daygrid';
@@ -37,6 +39,7 @@ import WarningIcon from '@mui/icons-material/Warning';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import ErrorIcon from '@mui/icons-material/Error';
+import DeleteSweepIcon from '@mui/icons-material/DeleteSweep';
 import { format, startOfMonth, endOfMonth } from 'date-fns';
 import { useAuth } from '@/contexts/AuthContext';
 import { Turno, Usuario, Farmacia, Conflicto } from '@/types';
@@ -73,6 +76,7 @@ const CalendarioPage: React.FC = () => {
     inicio: format(startOfMonth(new Date()), 'yyyy-MM-dd'),
     fin: format(endOfMonth(new Date()), 'yyyy-MM-dd'),
   });
+  const [modoCompletar, setModoCompletar] = useState(false); // false = limpiar y generar, true = completar existentes
 
   const [openEditDialog, setOpenEditDialog] = useState(false);
   const [selectedTurno, setSelectedTurno] = useState<Turno | null>(null);
@@ -166,28 +170,44 @@ const CalendarioPage: React.FC = () => {
       setError(null);
 
       console.log('Iniciando generación de calendario para el período:', generatePeriod);
+      console.log('Modo:', modoCompletar ? 'Completar existentes' : 'Limpiar y generar');
 
       // Cargar configuración
       const config = await getOrCreateConfiguracion(user.uid, user.farmaciaId);
 
-      // Eliminar turnos existentes en el período ANTES de generar nuevos
-      await deleteTurnosByDateRange(
-        user.farmaciaId,
-        generatePeriod.inicio,
-        generatePeriod.fin
-      );
-
-      // Ejecutar algoritmo con período limpio
       const fechaInicio = new Date(generatePeriod.inicio);
       const fechaFin = new Date(generatePeriod.fin);
 
+      let turnosExistentes: Turno[] = [];
+
+      if (modoCompletar) {
+        // Modo completar: cargar turnos existentes
+        console.log('Cargando turnos existentes...');
+        turnosExistentes = await getTurnosByDateRange(
+          user.farmaciaId,
+          generatePeriod.inicio,
+          generatePeriod.fin
+        );
+        console.log(`Turnos existentes encontrados: ${turnosExistentes.length}`);
+      } else {
+        // Modo limpiar: eliminar turnos existentes en el período ANTES de generar nuevos
+        console.log('Eliminando turnos existentes...');
+        await deleteTurnosByDateRange(
+          user.farmaciaId,
+          generatePeriod.inicio,
+          generatePeriod.fin
+        );
+      }
+
+      // Ejecutar algoritmo
       console.log('Ejecutando algoritmo de asignación...');
       const resultado = await executeSchedulingAlgorithm(
         config,
         farmacia,
         empleados,
         fechaInicio,
-        fechaFin
+        fechaFin,
+        turnosExistentes // Pasar turnos existentes al algoritmo
       );
 
       // Guardar nuevos turnos
@@ -204,8 +224,9 @@ const CalendarioPage: React.FC = () => {
 
       setConflictos(resultado.conflictos);
 
+      const modoTexto = modoCompletar ? 'completado' : 'generado';
       setSuccess(
-        `Calendario generado y guardado en la base de datos: ${resultado.turnos.length} turnos creados. ` +
+        `Calendario ${modoTexto} y guardado en la base de datos: ${resultado.turnos.length} turnos ${modoCompletar ? 'agregados' : 'creados'}. ` +
         `${resultado.conflictos.length} conflictos detectados. ` +
         `Score: ${resultado.scoreGlobal.toFixed(0)}`
       );
@@ -346,6 +367,50 @@ const CalendarioPage: React.FC = () => {
     }
   };
 
+  // Manejar eliminación de evento (tecla Delete o botón eliminar)
+  const handleEventRemove = async (removeInfo: any) => {
+    if (!user?.farmaciaId || user.farmaciaId.trim() === '') return;
+
+    const turnoId = removeInfo.event.id;
+    try {
+      await deleteTurno(user.farmaciaId, turnoId);
+      setTurnos(turnos.filter(t => t.id !== turnoId));
+      setSuccess('Turno eliminado correctamente');
+    } catch (err) {
+      setError('Error al eliminar el turno');
+      // Revertir la eliminación visual
+      removeInfo.revert();
+    }
+  };
+
+  // Limpiar todos los turnos del mes visible
+  const handleClearMonth = async () => {
+    if (!user?.farmaciaId || user.farmaciaId.trim() === '') return;
+
+    const confirmacion = window.confirm(
+      '¿Estás seguro de que deseas eliminar todos los turnos del mes visible? Esta acción no se puede deshacer.'
+    );
+
+    if (!confirmacion) return;
+
+    try {
+      setLoading(true);
+      const calendarApi = calendarRef.current?.getApi();
+      const currentDate = calendarApi?.getDate() || new Date();
+      const inicio = format(startOfMonth(currentDate), 'yyyy-MM-dd');
+      const fin = format(endOfMonth(currentDate), 'yyyy-MM-dd');
+
+      await deleteTurnosByDateRange(user.farmaciaId, inicio, fin);
+      setTurnos([]);
+      setConflictos([]);
+      setSuccess('Todos los turnos del mes han sido eliminados');
+    } catch (err) {
+      setError('Error al eliminar los turnos');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // Helper: obtener color de chip según severidad
   const getSeveridadColor = (severidad: string): "error" | "warning" | "info" | "default" => {
     switch (severidad) {
@@ -403,14 +468,25 @@ const CalendarioPage: React.FC = () => {
     <Box p={3}>
       <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
         <Typography variant="h4">Calendario de Turnos</Typography>
-        <Button
-          variant="contained"
-          color="primary"
-          startIcon={<AutoFixHighIcon />}
-          onClick={() => setOpenGenerateDialog(true)}
-        >
-          Generar Calendario
-        </Button>
+        <Box display="flex" gap={2}>
+          <Button
+            variant="outlined"
+            color="error"
+            startIcon={<DeleteSweepIcon />}
+            onClick={handleClearMonth}
+            disabled={loading || turnos.length === 0}
+          >
+            Limpiar Mes
+          </Button>
+          <Button
+            variant="contained"
+            color="primary"
+            startIcon={<AutoFixHighIcon />}
+            onClick={() => setOpenGenerateDialog(true)}
+          >
+            Generar Calendario
+          </Button>
+        </Box>
       </Box>
 
       {error && (
@@ -577,6 +653,7 @@ const CalendarioPage: React.FC = () => {
           select={handleDateSelect}
           eventClick={handleEventClick}
           eventDrop={handleEventDrop}
+          eventRemove={handleEventRemove}
           datesSet={(dateInfo) => {
             loadTurnosForMonth(dateInfo.start);
           }}
@@ -637,9 +714,28 @@ const CalendarioPage: React.FC = () => {
               </Grid>
             </Grid>
 
-            <Alert severity="warning" sx={{ mt: 2 }}>
-              Esto eliminará todos los turnos existentes en el período seleccionado.
-            </Alert>
+            <FormControlLabel
+              control={
+                <Checkbox
+                  checked={modoCompletar}
+                  onChange={(e) => setModoCompletar(e.target.checked)}
+                />
+              }
+              label="Modo completar: mantener turnos existentes y solo llenar espacios vacíos"
+              sx={{ mt: 2 }}
+            />
+
+            {!modoCompletar && (
+              <Alert severity="warning" sx={{ mt: 2 }}>
+                Esto eliminará todos los turnos existentes en el período seleccionado antes de generar nuevos.
+              </Alert>
+            )}
+
+            {modoCompletar && (
+              <Alert severity="info" sx={{ mt: 2 }}>
+                El algoritmo respetará los turnos ya asignados y solo completará los espacios vacíos.
+              </Alert>
+            )}
           </Box>
         </DialogContent>
         <DialogActions>

@@ -56,8 +56,13 @@ export class GeneticAlgorithm {
 
   /**
    * Ejecutar algoritmo genético
+   * @param turnosExistentes - Turnos existentes que deben respetarse (nota: genético no implementa modo completar aún)
    */
-  async execute(fechaInicio: Date, fechaFin: Date): Promise<ResultadoAlgoritmo> {
+  async execute(fechaInicio: Date, fechaFin: Date, turnosExistentes: Turno[] = []): Promise<ResultadoAlgoritmo> {
+    // TODO: Implementar soporte para turnos existentes en genético
+    if (turnosExistentes.length > 0) {
+      console.warn('Algoritmo genético no soporta aún el modo completar. Los turnos existentes serán ignorados.');
+    }
     const startTime = Date.now();
 
     // 1. Generar slots de tiempo necesarios

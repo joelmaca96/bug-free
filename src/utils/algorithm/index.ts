@@ -1,4 +1,4 @@
-import { Usuario, Farmacia, ConfiguracionAlgoritmo, ResultadoAlgoritmo } from '@/types';
+import { Usuario, Farmacia, ConfiguracionAlgoritmo, ResultadoAlgoritmo, Turno } from '@/types';
 import { GreedyAlgorithm } from './greedyAlgorithm';
 import { BacktrackingAlgorithm } from './backtrackingAlgorithm';
 import { GeneticAlgorithm } from './geneticAlgorithm';
@@ -6,13 +6,16 @@ import { GeneticAlgorithm } from './geneticAlgorithm';
 /**
  * Función principal para ejecutar el algoritmo de asignación de turnos
  * Selecciona la estrategia según la configuración y ejecuta el algoritmo
+ *
+ * @param turnosExistentes - Turnos existentes que deben respetarse (modo completar)
  */
 export async function executeSchedulingAlgorithm(
   config: ConfiguracionAlgoritmo,
   farmacia: Farmacia,
   empleados: Usuario[],
   fechaInicio: Date,
-  fechaFin: Date
+  fechaFin: Date,
+  turnosExistentes: Turno[] = []
 ): Promise<ResultadoAlgoritmo> {
   // Validaciones previas
   if (empleados.length === 0) {
@@ -45,7 +48,10 @@ export async function executeSchedulingAlgorithm(
 
   // Ejecutar algoritmo
   console.log(`Ejecutando algoritmo ${config.parametrosOptimizacion.estrategia}...`);
-  const resultado = await algorithm.execute(fechaInicio, fechaFin);
+  if (turnosExistentes.length > 0) {
+    console.log(`Modo completar: respetando ${turnosExistentes.length} turnos existentes`);
+  }
+  const resultado = await algorithm.execute(fechaInicio, fechaFin, turnosExistentes);
 
   console.log(`Algoritmo completado en ${resultado.tiempoEjecucion}ms`);
   console.log(`Score global: ${resultado.scoreGlobal}`);

@@ -48,8 +48,13 @@ export class BacktrackingAlgorithm {
 
   /**
    * Ejecutar algoritmo backtracking
+   * @param turnosExistentes - Turnos existentes que deben respetarse (nota: backtracking no implementa modo completar aún)
    */
-  async execute(fechaInicio: Date, fechaFin: Date): Promise<ResultadoAlgoritmo> {
+  async execute(fechaInicio: Date, fechaFin: Date, turnosExistentes: Turno[] = []): Promise<ResultadoAlgoritmo> {
+    // TODO: Implementar soporte para turnos existentes en backtracking
+    if (turnosExistentes.length > 0) {
+      console.warn('Backtracking no soporta aún el modo completar. Los turnos existentes serán ignorados.');
+    }
     const startTime = Date.now();
 
     // 1. Generar slots de tiempo necesarios

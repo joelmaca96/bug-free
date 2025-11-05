@@ -42,31 +42,54 @@ export class GreedyAlgorithm {
 
   /**
    * Ejecutar algoritmo greedy
+   * @param turnosExistentes - Turnos existentes que deben respetarse
    */
-  async execute(fechaInicio: Date, fechaFin: Date): Promise<ResultadoAlgoritmo> {
+  async execute(fechaInicio: Date, fechaFin: Date, turnosExistentes: Turno[] = []): Promise<ResultadoAlgoritmo> {
     const startTime = Date.now();
 
     // 1. Generar slots de tiempo necesarios
     const slots = this.generateTimeSlots(fechaInicio, fechaFin);
 
-    // 2. Asignación greedy
-    const turnos: Turno[] = [];
+    // 2. Inicializar con turnos existentes
+    const turnos: Turno[] = [...turnosExistentes];
 
-    for (const slot of slots) {
-      const asignaciones = this.assignEmployeesToSlot(slot, turnos);
-      turnos.push(...asignaciones);
-
-      // Actualizar las asignaciones del slot
-      slot.asignaciones = asignaciones.map((t) => t.empleadoId);
+    // 2.1. Cargar turnos existentes en el tracker de horas
+    for (const turno of turnosExistentes) {
+      this.hoursTracker.addTurno(turno.empleadoId, turno);
     }
 
-    // 3. Detectar conflictos
+    // 2.2. Marcar slots que ya están ocupados por turnos existentes
+    for (const turno of turnosExistentes) {
+      const slot = slots.find(s =>
+        s.fecha === turno.fecha &&
+        s.horaInicio === turno.horaInicio &&
+        s.horaFin === turno.horaFin &&
+        s.tipo === turno.tipo
+      );
+      if (slot) {
+        slot.asignaciones.push(turno.empleadoId);
+      }
+    }
+
+    // 3. Asignación greedy para slots incompletos
+    for (const slot of slots) {
+      const empleadosFaltantes = slot.trabajadoresNecesarios - slot.asignaciones.length;
+      if (empleadosFaltantes > 0) {
+        const asignaciones = this.assignEmployeesToSlot(slot, turnos, empleadosFaltantes);
+        turnos.push(...asignaciones);
+
+        // Actualizar las asignaciones del slot
+        slot.asignaciones.push(...asignaciones.map((t) => t.empleadoId));
+      }
+    }
+
+    // 4. Detectar conflictos
     const conflictos = this.conflictDetector.detectAllConflicts(turnos, slots, this.empleados);
 
-    // 4. Calcular estadísticas
+    // 5. Calcular estadísticas
     const estadisticas = this.calculateStatistics(turnos);
 
-    // 5. Calcular score global
+    // 6. Calcular score global
     const scoreGlobal = this.scoringSystem.calculateGlobalScore(turnos, slots, this.empleados);
 
     const tiempoEjecucion = Date.now() - startTime;
@@ -141,12 +164,14 @@ export class GreedyAlgorithm {
 
   /**
    * Asignar empleados a un slot específico
+   * @param numeroEmpleados - Número de empleados que faltan por asignar (por defecto, todos los necesarios)
    */
-  private assignEmployeesToSlot(slot: TimeSlot, turnosExistentes: Turno[]): Turno[] {
+  private assignEmployeesToSlot(slot: TimeSlot, turnosExistentes: Turno[], numeroEmpleados?: number): Turno[] {
     const asignaciones: Turno[] = [];
+    const empleadosAAsignar = numeroEmpleados !== undefined ? numeroEmpleados : slot.trabajadoresNecesarios;
 
-    // Intentar asignar hasta cubrir trabajadores necesarios
-    for (let i = 0; i < slot.trabajadoresNecesarios; i++) {
+    // Intentar asignar hasta cubrir empleados faltantes
+    for (let i = 0; i < empleadosAAsignar; i++) {
       const candidatos = this.getCandidatos(slot, turnosExistentes, asignaciones);
 
       if (candidatos.length === 0) {
