@@ -128,7 +128,14 @@ const CalendarioPage: React.FC = () => {
       // Cargar configuración
       const config = await getOrCreateConfiguracion(user.farmaciaId);
 
-      // Ejecutar algoritmo
+      // Eliminar turnos existentes en el período ANTES de generar nuevos
+      await deleteTurnosByDateRange(
+        user.farmaciaId,
+        generatePeriod.inicio,
+        generatePeriod.fin
+      );
+
+      // Ejecutar algoritmo con período limpio
       const fechaInicio = new Date(generatePeriod.inicio);
       const fechaFin = new Date(generatePeriod.fin);
 
@@ -138,13 +145,6 @@ const CalendarioPage: React.FC = () => {
         empleados,
         fechaInicio,
         fechaFin
-      );
-
-      // Eliminar turnos existentes en el período
-      await deleteTurnosByDateRange(
-        user.farmaciaId,
-        generatePeriod.inicio,
-        generatePeriod.fin
       );
 
       // Guardar nuevos turnos
