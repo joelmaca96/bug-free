@@ -17,6 +17,8 @@ import Empresas from './pages/Empresas';
 import Farmacias from './pages/Farmacias';
 import Empleados from './pages/Empleados';
 import ConfiguracionFarmacia from './pages/ConfiguracionFarmacia';
+import ConfiguracionAlgoritmo from './pages/ConfiguracionAlgoritmo';
+import SuperuserDashboard from './pages/SuperuserDashboard';
 
 const App: React.FC = () => {
   return (
@@ -82,6 +84,29 @@ const App: React.FC = () => {
                 <ProtectedRoute allowedRoles={['gestor', 'admin']}>
                   <Layout>
                     <ConfiguracionFarmacia />
+                  </Layout>
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="/algoritmo"
+              element={
+                <ProtectedRoute allowedRoles={['gestor', 'admin']}>
+                  <Layout>
+                    <ConfiguracionAlgoritmo />
+                  </Layout>
+                </ProtectedRoute>
+              }
+            />
+
+            {/* Ruta solo para superuser */}
+            <Route
+              path="/superuser"
+              element={
+                <ProtectedRoute allowedRoles={['superuser']}>
+                  <Layout>
+                    <SuperuserDashboard />
                   </Layout>
                 </ProtectedRoute>
               }

@@ -24,6 +24,9 @@ import CalendarMonthIcon from '@mui/icons-material/CalendarMonth';
 import SettingsIcon from '@mui/icons-material/Settings';
 import AssessmentIcon from '@mui/icons-material/Assessment';
 import LogoutIcon from '@mui/icons-material/Logout';
+import DashboardIcon from '@mui/icons-material/Dashboard';
+import SmartToyIcon from '@mui/icons-material/SmartToy';
+import SupervisorAccountIcon from '@mui/icons-material/SupervisorAccount';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -65,27 +68,40 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
 
     const commonItems = [
       {
-        text: 'Mi Calendario',
-        icon: <CalendarMonthIcon />,
-        path: '/mi-calendario',
-        roles: ['empleado', 'gestor', 'admin'],
+        text: 'Dashboard',
+        icon: <DashboardIcon />,
+        path: '/dashboard',
+        roles: ['empleado', 'gestor', 'admin', 'superuser'],
+      },
+    ];
+
+    const superuserItems = [
+      {
+        text: 'Panel Superuser',
+        icon: <SupervisorAccountIcon />,
+        path: '/superuser',
+        roles: ['superuser']
       },
     ];
 
     const gestorItems = [
       { text: 'Empleados', icon: <PeopleIcon />, path: '/empleados', roles: ['gestor', 'admin'] },
+      { text: 'Configuración Farmacia', icon: <SettingsIcon />, path: '/configuracion', roles: ['gestor', 'admin'] },
+      { text: 'Configuración Algoritmo', icon: <SmartToyIcon />, path: '/algoritmo', roles: ['gestor', 'admin'] },
       { text: 'Calendario', icon: <CalendarMonthIcon />, path: '/calendario', roles: ['gestor', 'admin'] },
-      { text: 'Configuración', icon: <SettingsIcon />, path: '/configuracion', roles: ['gestor', 'admin'] },
       { text: 'Reportes', icon: <AssessmentIcon />, path: '/reportes', roles: ['gestor', 'admin'] },
     ];
 
     const adminItems = [
       { text: 'Empresas', icon: <BusinessIcon />, path: '/empresas', roles: ['admin'] },
       { text: 'Farmacias', icon: <LocalPharmacyIcon />, path: '/farmacias', roles: ['admin'] },
-      { text: 'Usuarios', icon: <PeopleIcon />, path: '/usuarios', roles: ['admin'] },
     ];
 
     let items = [...commonItems];
+
+    if (user.rol === 'superuser') {
+      items = [...items, ...superuserItems];
+    }
 
     if (user.rol === 'gestor' || user.rol === 'admin') {
       items = [...items, ...gestorItems];
