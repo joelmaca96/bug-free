@@ -85,7 +85,7 @@ export interface Turno {
   fecha: string; // ISO date
   horaInicio: number; // hora en formato 24h
   horaFin: number; // hora en formato 24h
-  duracionMinutos: number; // duración del turno en minutos
+  duracionMinutos?: number; // duración del turno en minutos (calculado si no existe)
   tipo: TipoTurno;
   estado: EstadoTurno;
   createdAt?: Date;

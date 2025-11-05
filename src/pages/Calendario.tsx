@@ -18,6 +18,14 @@ import {
   Grid,
   Card,
   CardContent,
+  Accordion,
+  AccordionSummary,
+  AccordionDetails,
+  Chip,
+  List,
+  ListItem,
+  ListItemText,
+  Divider,
 } from '@mui/material';
 import FullCalendar from '@fullcalendar/react';
 import dayGridPlugin from '@fullcalendar/daygrid';
@@ -27,6 +35,8 @@ import { DateSelectArg, EventClickArg, EventDropArg } from '@fullcalendar/core';
 import AutoFixHighIcon from '@mui/icons-material/AutoFixHigh';
 import WarningIcon from '@mui/icons-material/Warning';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import ErrorIcon from '@mui/icons-material/Error';
 import { format, startOfMonth, endOfMonth } from 'date-fns';
 import { useAuth } from '@/contexts/AuthContext';
 import { Turno, Usuario, Farmacia, Conflicto } from '@/types';
@@ -71,6 +81,17 @@ const CalendarioPage: React.FC = () => {
     horaInicio: 9,
     horaFin: 17,
   });
+
+  // Función para calcular duración del turno en minutos
+  const calculateDuracionMinutos = (horaInicio: number, horaFin: number): number => {
+    if (horaFin >= horaInicio) {
+      // Turno normal (ej: 9:00 a 17:00)
+      return (horaFin - horaInicio) * 60;
+    } else {
+      // Turno que cruza medianoche (ej: 22:00 a 6:00)
+      return (24 - horaInicio + horaFin) * 60;
+    }
+  };
 
   useEffect(() => {
     loadData();
@@ -117,9 +138,20 @@ const CalendarioPage: React.FC = () => {
       const fin = format(endOfMonth(date), 'yyyy-MM-dd');
 
       const turnosData = await getTurnosByDateRange(user.farmaciaId, inicio, fin);
-      setTurnos(turnosData);
+
+      // Calcular duracionMinutos si no existe (para compatibilidad con turnos antiguos)
+      const turnosConDuracion = turnosData.map(turno => {
+        if (turno.duracionMinutos === undefined) {
+          const duracionMinutos = calculateDuracionMinutos(turno.horaInicio, turno.horaFin);
+          return { ...turno, duracionMinutos };
+        }
+        return turno;
+      });
+
+      setTurnos(turnosConDuracion);
     } catch (err) {
       console.error('Error loading turnos:', err);
+      setError('Error al cargar los turnos del calendario');
     }
   };
 
@@ -257,17 +289,6 @@ const CalendarioPage: React.FC = () => {
     }
   };
 
-  // Función para calcular duración del turno en minutos
-  const calculateDuracionMinutos = (horaInicio: number, horaFin: number): number => {
-    if (horaFin >= horaInicio) {
-      // Turno normal (ej: 9:00 a 17:00)
-      return (horaFin - horaInicio) * 60;
-    } else {
-      // Turno que cruza medianoche (ej: 22:00 a 6:00)
-      return (24 - horaInicio + horaFin) * 60;
-    }
-  };
-
   const handleSaveTurno = async () => {
     if (!user?.farmaciaId || user.farmaciaId.trim() === '' || !selectedTurno) return;
 
@@ -325,10 +346,22 @@ const CalendarioPage: React.FC = () => {
     }
   };
 
+  // Helper: obtener color de chip según severidad
+  const getSeveridadColor = (severidad: string): "error" | "warning" | "info" | "default" => {
+    switch (severidad) {
+      case 'critico': return 'error';
+      case 'alto': return 'warning';
+      case 'medio': return 'warning';
+      case 'bajo': return 'info';
+      default: return 'default';
+    }
+  };
+
   // Convertir turnos a eventos de FullCalendar
   const events = turnos.map(turno => {
     const empleado = empleados.find(e => e.uid === turno.empleadoId);
-    const hasConflict = conflictos.some(c => c.turnoId === turno.id);
+    const turnoConflictos = conflictos.filter(c => c.turnoId === turno.id);
+    const hasConflict = turnoConflictos.length > 0;
 
     // Detectar si la guardia cruza la medianoche (horaFin < horaInicio)
     const cruzaMedianoche = turno.horaFin < turno.horaInicio;
@@ -337,13 +370,24 @@ const CalendarioPage: React.FC = () => {
       ? format(new Date(new Date(turno.fecha).getTime() + 24 * 60 * 60 * 1000), 'yyyy-MM-dd')
       : turno.fecha;
 
+    // Construir título con información de conflicto
+    let title = empleado ? `${empleado.datosPersonales.nombre} ${empleado.datosPersonales.apellidos}` : 'Sin asignar';
+    if (hasConflict) {
+      title += ` ⚠️ (${turnoConflictos.length} conflicto${turnoConflictos.length > 1 ? 's' : ''})`;
+    }
+
     return {
       id: turno.id,
-      title: empleado ? `${empleado.datosPersonales.nombre} ${empleado.datosPersonales.apellidos}` : 'Sin asignar',
+      title,
       start: `${fechaInicio}T${String(turno.horaInicio).padStart(2, '0')}:00:00`,
       end: `${fechaFin}T${String(turno.horaFin).padStart(2, '0')}:00:00`,
       backgroundColor: hasConflict ? '#ef5350' : turno.tipo === 'guardia' ? '#42a5f5' : turno.tipo === 'festivo' ? '#66bb6a' : '#9575cd',
       borderColor: hasConflict ? '#c62828' : turno.tipo === 'guardia' ? '#1976d2' : turno.tipo === 'festivo' ? '#388e3c' : '#5e35b1',
+      extendedProps: {
+        conflictos: turnoConflictos,
+        empleado: empleado,
+        turno: turno
+      }
     };
   });
 
@@ -426,6 +470,90 @@ const CalendarioPage: React.FC = () => {
           </Card>
         </Grid>
       </Grid>
+
+      {/* Panel de Conflictos Detallado */}
+      {conflictos.length > 0 && (
+        <Accordion sx={{ mb: 3 }} defaultExpanded={conflictos.length > 0}>
+          <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+            <Box display="flex" alignItems="center" gap={1}>
+              <ErrorIcon color="error" />
+              <Typography variant="h6">
+                Conflictos Detectados ({conflictos.length})
+              </Typography>
+            </Box>
+          </AccordionSummary>
+          <AccordionDetails>
+            <List>
+              {conflictos.map((conflicto, index) => {
+                const turno = turnos.find(t => t.id === conflicto.turnoId);
+                const empleado = turno ? empleados.find(e => e.uid === turno.empleadoId) : null;
+
+                return (
+                  <React.Fragment key={conflicto.id}>
+                    {index > 0 && <Divider />}
+                    <ListItem
+                      sx={{
+                        flexDirection: 'column',
+                        alignItems: 'flex-start',
+                        py: 2,
+                      }}
+                    >
+                      <Box display="flex" alignItems="center" gap={1} mb={1} width="100%">
+                        <Chip
+                          label={conflicto.severidad.toUpperCase()}
+                          color={getSeveridadColor(conflicto.severidad)}
+                          size="small"
+                        />
+                        <Chip
+                          label={conflicto.tipo.replace(/_/g, ' ').toUpperCase()}
+                          variant="outlined"
+                          size="small"
+                        />
+                        {turno && (
+                          <Typography variant="body2" color="textSecondary">
+                            Fecha: {turno.fecha}
+                          </Typography>
+                        )}
+                      </Box>
+
+                      <ListItemText
+                        primary={
+                          <Typography variant="subtitle1" fontWeight="bold">
+                            {empleado ? `${empleado.datosPersonales.nombre} ${empleado.datosPersonales.apellidos}` : 'Empleado no encontrado'}
+                          </Typography>
+                        }
+                        secondary={
+                          <Box>
+                            <Typography variant="body2" color="text.primary" gutterBottom>
+                              {conflicto.descripcion}
+                            </Typography>
+                            {conflicto.sugerencias.length > 0 && (
+                              <Box mt={1}>
+                                <Typography variant="caption" color="textSecondary" fontWeight="bold">
+                                  Sugerencias:
+                                </Typography>
+                                <List dense sx={{ pl: 2 }}>
+                                  {conflicto.sugerencias.map((sugerencia, idx) => (
+                                    <ListItem key={idx} sx={{ py: 0 }}>
+                                      <Typography variant="caption" color="textSecondary">
+                                        • {sugerencia}
+                                      </Typography>
+                                    </ListItem>
+                                  ))}
+                                </List>
+                              </Box>
+                            )}
+                          </Box>
+                        }
+                      />
+                    </ListItem>
+                  </React.Fragment>
+                );
+              })}
+            </List>
+          </AccordionDetails>
+        </Accordion>
+      )}
 
       {/* Calendario */}
       <Paper sx={{ p: 2 }}>
