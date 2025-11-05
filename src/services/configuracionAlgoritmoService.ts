@@ -56,6 +56,11 @@ export const getConfiguracionByFarmacia = async (
   farmaciaId: string
 ): Promise<ConfiguracionAlgoritmo | null> => {
   try {
+    // Validar que farmaciaId no sea vacío
+    if (!farmaciaId || farmaciaId.trim() === '') {
+      throw new Error('farmaciaId no puede estar vacío');
+    }
+
     const q = query(collection(db, COLLECTION_NAME), where('farmaciaId', '==', farmaciaId));
     const querySnapshot = await getDocs(q);
 
@@ -76,6 +81,11 @@ export const getOrCreateConfiguracion = async (
   farmaciaId: string
 ): Promise<ConfiguracionAlgoritmo> => {
   try {
+    // Validar que farmaciaId no sea vacío, undefined o null
+    if (!farmaciaId || farmaciaId.trim() === '') {
+      throw new Error('farmaciaId no puede estar vacío. El usuario debe tener una farmacia asignada.');
+    }
+
     let config = await getConfiguracionByFarmacia(farmaciaId);
 
     if (!config) {
@@ -133,6 +143,11 @@ export const createConfiguracionVersion = async (
   configuracion: Partial<Omit<ConfiguracionAlgoritmo, 'id' | 'farmaciaId' | 'version' | 'fechaModificacion'>>
 ): Promise<ConfiguracionAlgoritmo> => {
   try {
+    // Validar que farmaciaId no sea vacío
+    if (!farmaciaId || farmaciaId.trim() === '') {
+      throw new Error('farmaciaId no puede estar vacío');
+    }
+
     const currentConfig = await getOrCreateConfiguracion(farmaciaId);
 
     const newConfig = {
