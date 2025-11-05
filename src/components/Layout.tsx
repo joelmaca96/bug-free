@@ -26,6 +26,7 @@ import AssessmentIcon from '@mui/icons-material/Assessment';
 import LogoutIcon from '@mui/icons-material/Logout';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
+import ThemeToggle from './ThemeToggle';
 
 const drawerWidth = 260;
 
@@ -149,7 +150,8 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
           <Typography variant="h6" noWrap component="div" sx={{ flexGrow: 1 }}>
             {menuItems.find((item) => item.path === location.pathname)?.text || 'Dashboard'}
           </Typography>
-          <IconButton onClick={handleMenuOpen} sx={{ p: 0 }}>
+          <ThemeToggle />
+          <IconButton onClick={handleMenuOpen} sx={{ p: 0, ml: 1 }}>
             <Avatar sx={{ bgcolor: 'secondary.main' }}>
               {user?.datosPersonales.nombre.charAt(0).toUpperCase() || 'U'}
             </Avatar>
