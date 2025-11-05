@@ -199,6 +199,7 @@ const CalendarioPage: React.FC = () => {
       fecha: format(selectInfo.start, 'yyyy-MM-dd'),
       horaInicio: 9,
       horaFin: 17,
+      duracionMinutos: (17 - 9) * 60, // 8 horas = 480 minutos
       tipo: 'laboral',
       estado: 'pendiente',
     });
@@ -256,21 +257,36 @@ const CalendarioPage: React.FC = () => {
     }
   };
 
+  // Función para calcular duración del turno en minutos
+  const calculateDuracionMinutos = (horaInicio: number, horaFin: number): number => {
+    if (horaFin >= horaInicio) {
+      // Turno normal (ej: 9:00 a 17:00)
+      return (horaFin - horaInicio) * 60;
+    } else {
+      // Turno que cruza medianoche (ej: 22:00 a 6:00)
+      return (24 - horaInicio + horaFin) * 60;
+    }
+  };
+
   const handleSaveTurno = async () => {
     if (!user?.farmaciaId || user.farmaciaId.trim() === '' || !selectedTurno) return;
 
     try {
+      // Calcular duración del turno
+      const duracionMinutos = calculateDuracionMinutos(turnoForm.horaInicio, turnoForm.horaFin);
+
       if (selectedTurno.id) {
         // Actualizar turno existente
         await updateTurno(user.farmaciaId, selectedTurno.id, {
           empleadoId: turnoForm.empleadoId,
           horaInicio: turnoForm.horaInicio,
           horaFin: turnoForm.horaFin,
+          duracionMinutos,
         });
 
         setTurnos(turnos.map(t =>
           t.id === selectedTurno.id
-            ? { ...t, empleadoId: turnoForm.empleadoId, horaInicio: turnoForm.horaInicio, horaFin: turnoForm.horaFin }
+            ? { ...t, empleadoId: turnoForm.empleadoId, horaInicio: turnoForm.horaInicio, horaFin: turnoForm.horaFin, duracionMinutos }
             : t
         ));
       } else {
@@ -280,6 +296,7 @@ const CalendarioPage: React.FC = () => {
           fecha: selectedTurno.fecha,
           horaInicio: turnoForm.horaInicio,
           horaFin: turnoForm.horaFin,
+          duracionMinutos,
           tipo: selectedTurno.tipo,
           estado: 'confirmado',
         };

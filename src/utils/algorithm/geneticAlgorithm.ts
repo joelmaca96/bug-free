@@ -185,12 +185,16 @@ export class GeneticAlgorithm {
 
         const turnosEmpleado = turnos.filter((t) => t.empleadoId === empleado.uid);
 
+        // Calcular duración del turno
+        const duracionMinutos = this.calculateDuracionMinutos(slot.horaInicio, slot.horaFin);
+
         const turnoTemp: Turno = {
           id: this.generateTurnoId(slot, empleado),
           empleadoId: empleado.uid,
           fecha: slot.fecha,
           horaInicio: slot.horaInicio,
           horaFin: slot.horaFin,
+          duracionMinutos,
           tipo: slot.tipo,
           estado: 'pendiente',
         };
@@ -284,12 +288,16 @@ export class GeneticAlgorithm {
       const slotAleatorio = slots[Math.floor(Math.random() * slots.length)];
       const empleadoAleatorio = this.empleados[Math.floor(Math.random() * this.empleados.length)];
 
+      // Calcular duración del turno
+      const duracionMinutos = this.calculateDuracionMinutos(slotAleatorio.horaInicio, slotAleatorio.horaFin);
+
       const turnoNuevo: Turno = {
         id: this.generateTurnoId(slotAleatorio, empleadoAleatorio),
         empleadoId: empleadoAleatorio.uid,
         fecha: slotAleatorio.fecha,
         horaInicio: slotAleatorio.horaInicio,
         horaFin: slotAleatorio.horaFin,
+        duracionMinutos,
         tipo: slotAleatorio.tipo,
         estado: 'pendiente',
       };
@@ -420,6 +428,20 @@ export class GeneticAlgorithm {
         festivosAsignados,
       };
     });
+  }
+
+  /**
+   * Calcular duración del turno en minutos
+   * Maneja correctamente turnos que cruzan medianoche
+   */
+  private calculateDuracionMinutos(horaInicio: number, horaFin: number): number {
+    if (horaFin >= horaInicio) {
+      // Turno normal (ej: 9:00 a 17:00)
+      return (horaFin - horaInicio) * 60;
+    } else {
+      // Turno que cruza medianoche (ej: 22:00 a 6:00)
+      return (24 - horaInicio + horaFin) * 60;
+    }
   }
 
   /**
