@@ -163,17 +163,13 @@ const CalendarioPage: React.FC = () => {
       await createTurnosBatch(user.farmaciaId, resultado.turnos);
       console.log('Turnos guardados exitosamente');
 
-      // Recargar turnos desde la base de datos para obtener los IDs correctos
+      // Recargar turnos del mes visible actualmente en el calendario
       console.log('Recargando turnos desde la base de datos...');
-      const turnosGuardados = await getTurnosByDateRange(
-        user.farmaciaId,
-        generatePeriod.inicio,
-        generatePeriod.fin
-      );
-      console.log(`Turnos recargados: ${turnosGuardados.length}`);
+      const calendarApi = calendarRef.current?.getApi();
+      const currentDate = calendarApi?.getDate() || new Date();
+      await loadTurnosForMonth(currentDate);
+      console.log('Turnos recargados');
 
-      // Actualizar estado con los turnos recargados desde la base de datos
-      setTurnos(turnosGuardados);
       setConflictos(resultado.conflictos);
 
       setSuccess(
@@ -317,11 +313,18 @@ const CalendarioPage: React.FC = () => {
     const empleado = empleados.find(e => e.uid === turno.empleadoId);
     const hasConflict = conflictos.some(c => c.turnoId === turno.id);
 
+    // Detectar si la guardia cruza la medianoche (horaFin < horaInicio)
+    const cruzaMedianoche = turno.horaFin < turno.horaInicio;
+    const fechaInicio = turno.fecha;
+    const fechaFin = cruzaMedianoche
+      ? format(new Date(new Date(turno.fecha).getTime() + 24 * 60 * 60 * 1000), 'yyyy-MM-dd')
+      : turno.fecha;
+
     return {
       id: turno.id,
       title: empleado ? `${empleado.datosPersonales.nombre} ${empleado.datosPersonales.apellidos}` : 'Sin asignar',
-      start: `${turno.fecha}T${String(turno.horaInicio).padStart(2, '0')}:00:00`,
-      end: `${turno.fecha}T${String(turno.horaFin).padStart(2, '0')}:00:00`,
+      start: `${fechaInicio}T${String(turno.horaInicio).padStart(2, '0')}:00:00`,
+      end: `${fechaFin}T${String(turno.horaFin).padStart(2, '0')}:00:00`,
       backgroundColor: hasConflict ? '#ef5350' : turno.tipo === 'guardia' ? '#42a5f5' : turno.tipo === 'festivo' ? '#66bb6a' : '#9575cd',
       borderColor: hasConflict ? '#c62828' : turno.tipo === 'guardia' ? '#1976d2' : turno.tipo === 'festivo' ? '#388e3c' : '#5e35b1',
     };
