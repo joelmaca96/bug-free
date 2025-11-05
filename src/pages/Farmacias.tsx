@@ -62,17 +62,20 @@ const Farmacias: React.FC = () => {
         ]);
         setFarmacias(farmaciasData);
         setEmpresas(empresaData ? [empresaData] : []);
-        setGestores(gestoresData.filter(u => u.rol === 'gestor'));
+        // Incluir tanto gestores como administradores en la lista
+        setGestores(gestoresData.filter(u => u.rol === 'gestor' || u.rol === 'admin'));
       } else if (user?.rol === 'superuser') {
         // Si es superuser, cargar todo
-        const [farmaciasData, empresasData, gestoresData] = await Promise.all([
+        const [farmaciasData, empresasData, gestoresData, adminsData] = await Promise.all([
           getFarmacias(),
           getEmpresas(),
           getUsuariosByRol('gestor'),
+          getUsuariosByRol('admin'),
         ]);
         setFarmacias(farmaciasData);
         setEmpresas(empresasData);
-        setGestores(gestoresData);
+        // Incluir tanto gestores como administradores en la lista
+        setGestores([...gestoresData, ...adminsData]);
       }
     } catch (error) {
       console.error('Error al cargar datos:', error);
@@ -197,7 +200,7 @@ const Farmacias: React.FC = () => {
   const getGestorNombre = (gestorId?: string) => {
     if (!gestorId) return 'Sin asignar';
     const gestor = gestores.find((g) => g.uid === gestorId);
-    return gestor ? `${gestor.datosPersonales.nombre} ${gestor.datosPersonales.apellidos}` : 'Sin asignar';
+    return gestor ? `${gestor.datosPersonales.nombre} ${gestor.datosPersonales.apellidos} (${gestor.rol})` : 'Sin asignar';
   };
 
   const columns: GridColDef[] = [
@@ -211,7 +214,7 @@ const Farmacias: React.FC = () => {
     },
     {
       field: 'gestorId',
-      headerName: 'Gestor',
+      headerName: 'Gestor/Admin',
       width: 200,
       renderCell: (params) => getGestorNombre(params.row.gestorId),
     },
@@ -307,7 +310,7 @@ const Farmacias: React.FC = () => {
           <TextField
             select
             margin="dense"
-            label="Gestor (Opcional)"
+            label="Gestor/Administrador (Opcional)"
             fullWidth
             value={formData.gestorId}
             onChange={(e) => setFormData({ ...formData, gestorId: e.target.value })}
@@ -320,7 +323,7 @@ const Farmacias: React.FC = () => {
               )
               .map((gestor) => (
                 <MenuItem key={gestor.uid} value={gestor.uid}>
-                  {gestor.datosPersonales.nombre} {gestor.datosPersonales.apellidos} - {gestor.datosPersonales.email}
+                  {gestor.datosPersonales.nombre} {gestor.datosPersonales.apellidos} ({gestor.rol}) - {gestor.datosPersonales.email}
                 </MenuItem>
               ))}
           </TextField>
