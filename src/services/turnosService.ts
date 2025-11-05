@@ -29,6 +29,26 @@ const getTurnosCollectionPath = (farmaciaId: string) => {
   return `calendarios/${farmaciaId}/turnos`;
 };
 
+// Asegurar que el documento del calendario existe
+const ensureCalendarioExists = async (farmaciaId: string) => {
+  try {
+    const calendarioRef = doc(db, 'calendarios', farmaciaId);
+    const calendarioSnap = await getDoc(calendarioRef);
+
+    if (!calendarioSnap.exists()) {
+      console.log('Creando documento de calendario para farmacia:', farmaciaId);
+      await setDoc(calendarioRef, {
+        farmaciaId,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      });
+    }
+  } catch (error) {
+    console.error('Error ensuring calendario exists:', error);
+    // No lanzar error, solo log
+  }
+};
+
 // Obtener todos los turnos de una farmacia
 export const getTurnosByFarmacia = async (farmaciaId: string): Promise<Turno[]> => {
   try {
@@ -143,6 +163,9 @@ export const createTurno = async (
   turno: Omit<Turno, 'id' | 'createdAt' | 'updatedAt'>
 ): Promise<string> => {
   try {
+    // Asegurar que el documento del calendario existe
+    await ensureCalendarioExists(farmaciaId);
+
     const collectionPath = getTurnosCollectionPath(farmaciaId);
     const docRef = doc(collection(db, collectionPath));
 
@@ -165,6 +188,9 @@ export const createTurnosBatch = async (
   turnos: Omit<Turno, 'id' | 'createdAt' | 'updatedAt'>[]
 ): Promise<void> => {
   try {
+    // Asegurar que el documento del calendario existe
+    await ensureCalendarioExists(farmaciaId);
+
     const batch = writeBatch(db);
     const collectionPath = getTurnosCollectionPath(farmaciaId);
 
@@ -210,9 +236,14 @@ export const deleteTurno = async (
   turnoId: string
 ): Promise<void> => {
   try {
+    // Asegurar que el documento del calendario existe
+    await ensureCalendarioExists(farmaciaId);
+
     const collectionPath = getTurnosCollectionPath(farmaciaId);
+    console.log('Eliminando turno:', { farmaciaId, turnoId, collectionPath });
     const docRef = doc(db, collectionPath, turnoId);
     await deleteDoc(docRef);
+    console.log('Turno eliminado exitosamente de Firestore');
   } catch (error) {
     console.error('Error deleting turno:', error);
     throw error;
@@ -248,16 +279,29 @@ export const deleteTurnosByDateRange = async (
   fechaFin: string
 ): Promise<void> => {
   try {
+    // Asegurar que el documento del calendario existe
+    await ensureCalendarioExists(farmaciaId);
+
+    console.log('Eliminando turnos por rango de fechas:', { farmaciaId, fechaInicio, fechaFin });
     const turnos = await getTurnosByDateRange(farmaciaId, fechaInicio, fechaFin);
+    console.log(`Turnos encontrados para eliminar: ${turnos.length}`);
+
+    if (turnos.length === 0) {
+      console.log('No hay turnos para eliminar');
+      return;
+    }
+
     const batch = writeBatch(db);
     const collectionPath = getTurnosCollectionPath(farmaciaId);
 
     for (const turno of turnos) {
+      console.log(`Agregando al batch para eliminar: ${turno.id}`);
       const docRef = doc(db, collectionPath, turno.id);
       batch.delete(docRef);
     }
 
     await batch.commit();
+    console.log(`${turnos.length} turnos eliminados exitosamente de Firestore`);
   } catch (error) {
     console.error('Error deleting turnos by date range:', error);
     throw error;

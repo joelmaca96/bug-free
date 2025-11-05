@@ -358,12 +358,19 @@ const CalendarioPage: React.FC = () => {
     if (!user?.farmaciaId || user.farmaciaId.trim() === '' || !selectedTurno?.id) return;
 
     try {
+      console.log('Iniciando borrado de turno desde diálogo:', selectedTurno.id);
       await deleteTurno(user.farmaciaId, selectedTurno.id);
-      setTurnos(turnos.filter(t => t.id !== selectedTurno.id));
+
+      // Recargar turnos desde la base de datos para asegurar sincronización
+      const calendarApi = calendarRef.current?.getApi();
+      const currentDate = calendarApi?.getDate() || new Date();
+      await loadTurnosForMonth(currentDate);
+
       setSuccess('Turno eliminado correctamente');
       setOpenEditDialog(false);
-    } catch (err) {
-      setError('Error al eliminar el turno');
+    } catch (err: any) {
+      console.error('Error al eliminar turno:', err);
+      setError(`Error al eliminar el turno: ${err.message || err}`);
     }
   };
 
@@ -372,12 +379,20 @@ const CalendarioPage: React.FC = () => {
     if (!user?.farmaciaId || user.farmaciaId.trim() === '') return;
 
     const turnoId = removeInfo.event.id;
+    console.log('Evento eliminado desde calendario (tecla Delete):', turnoId);
+
     try {
       await deleteTurno(user.farmaciaId, turnoId);
-      setTurnos(turnos.filter(t => t.id !== turnoId));
+
+      // Recargar turnos desde la base de datos para asegurar sincronización
+      const calendarApi = calendarRef.current?.getApi();
+      const currentDate = calendarApi?.getDate() || new Date();
+      await loadTurnosForMonth(currentDate);
+
       setSuccess('Turno eliminado correctamente');
-    } catch (err) {
-      setError('Error al eliminar el turno');
+    } catch (err: any) {
+      console.error('Error al eliminar turno:', err);
+      setError(`Error al eliminar el turno: ${err.message || err}`);
       // Revertir la eliminación visual
       removeInfo.revert();
     }
@@ -400,12 +415,17 @@ const CalendarioPage: React.FC = () => {
       const inicio = format(startOfMonth(currentDate), 'yyyy-MM-dd');
       const fin = format(endOfMonth(currentDate), 'yyyy-MM-dd');
 
+      console.log('Limpiando todos los turnos del mes:', { inicio, fin });
       await deleteTurnosByDateRange(user.farmaciaId, inicio, fin);
-      setTurnos([]);
+
+      // Recargar turnos desde la base de datos
+      await loadTurnosForMonth(currentDate);
       setConflictos([]);
+
       setSuccess('Todos los turnos del mes han sido eliminados');
-    } catch (err) {
-      setError('Error al eliminar los turnos');
+    } catch (err: any) {
+      console.error('Error al eliminar los turnos:', err);
+      setError(`Error al eliminar los turnos: ${err.message || err}`);
     } finally {
       setLoading(false);
     }
