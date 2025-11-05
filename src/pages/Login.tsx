@@ -10,6 +10,7 @@ import {
   Alert,
   CircularProgress,
   Link as MuiLink,
+  useTheme,
 } from '@mui/material';
 import GoogleIcon from '@mui/icons-material/Google';
 import AppleIcon from '@mui/icons-material/Apple';
@@ -24,6 +25,7 @@ const Login: React.FC = () => {
 
   const { signIn, signInWithGoogle, signInWithApple } = useAuth();
   const navigate = useNavigate();
+  const theme = useTheme();
 
   const handleEmailLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -69,22 +71,63 @@ const Login: React.FC = () => {
   };
 
   return (
-    <Container maxWidth="sm">
-      <Box
-        sx={{
-          minHeight: '100vh',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-        }}
-      >
-        <Paper elevation={3} sx={{ p: 4, width: '100%' }}>
-          <Typography variant="h4" component="h1" gutterBottom align="center">
-            AgapitoDiSousa
-          </Typography>
-          <Typography variant="subtitle1" gutterBottom align="center" color="text.secondary">
-            Sistema de Gestión de Horarios
-          </Typography>
+    <Box
+      sx={{
+        minHeight: '100vh',
+        width: '100vw',
+        background: theme.palette.gradient.primary,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        position: 'relative',
+        overflow: 'hidden',
+      }}
+    >
+      <Container maxWidth="sm">
+        <Paper
+          elevation={8}
+          sx={{
+            p: 5,
+            width: '100%',
+            borderRadius: 4,
+            animation: 'slideUp 0.5s ease-out',
+            backdropFilter: 'blur(10px)',
+            background: theme.palette.mode === 'light'
+              ? 'rgba(255, 255, 255, 0.95)'
+              : 'rgba(43, 36, 77, 0.95)',
+          }}
+        >
+          <Box
+            sx={{
+              animation: 'fadeIn 0.8s ease-out',
+              textAlign: 'center',
+              mb: 3,
+            }}
+          >
+            <Typography
+              variant="h3"
+              component="h1"
+              gutterBottom
+              sx={{
+                fontWeight: 700,
+                background: theme.palette.gradient.secondary,
+                WebkitBackgroundClip: 'text',
+                WebkitTextFillColor: 'transparent',
+                backgroundClip: 'text',
+              }}
+            >
+              AgapitoDiSousa
+            </Typography>
+            <Typography
+              variant="subtitle1"
+              color="text.secondary"
+              sx={{
+                fontWeight: 500,
+              }}
+            >
+              Sistema de Gestión de Horarios
+            </Typography>
+          </Box>
 
           {error && (
             <Alert severity="error" sx={{ mt: 2, mb: 2 }}>
@@ -117,10 +160,20 @@ const Login: React.FC = () => {
               type="submit"
               fullWidth
               variant="contained"
-              sx={{ mt: 3, mb: 2 }}
+              size="large"
+              sx={{
+                mt: 3,
+                mb: 2,
+                py: 1.5,
+                background: theme.palette.gradient.secondary,
+                '&:hover': {
+                  background: theme.palette.gradient.secondary,
+                  opacity: 0.9,
+                },
+              }}
               disabled={loading}
             >
-              {loading ? <CircularProgress size={24} /> : 'Iniciar Sesión'}
+              {loading ? <CircularProgress size={24} color="inherit" /> : 'Iniciar Sesión'}
             </Button>
           </Box>
 
@@ -129,9 +182,17 @@ const Login: React.FC = () => {
           <Button
             fullWidth
             variant="outlined"
+            size="large"
             startIcon={<GoogleIcon />}
             onClick={handleGoogleLogin}
-            sx={{ mb: 2 }}
+            sx={{
+              mb: 2,
+              py: 1.5,
+              borderWidth: 2,
+              '&:hover': {
+                borderWidth: 2,
+              },
+            }}
             disabled={loading}
           >
             Continuar con Google
@@ -140,10 +201,18 @@ const Login: React.FC = () => {
           <Button
             fullWidth
             variant="outlined"
+            size="large"
             startIcon={<AppleIcon />}
             onClick={handleAppleLogin}
             disabled={loading}
-            sx={{ mb: 2 }}
+            sx={{
+              mb: 2,
+              py: 1.5,
+              borderWidth: 2,
+              '&:hover': {
+                borderWidth: 2,
+              },
+            }}
           >
             Continuar con Apple
           </Button>
@@ -157,8 +226,8 @@ const Login: React.FC = () => {
             </Typography>
           </Box>
         </Paper>
-      </Box>
-    </Container>
+      </Container>
+    </Box>
   );
 };
 

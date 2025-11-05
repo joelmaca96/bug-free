@@ -20,7 +20,6 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import { JornadaGuardia } from '@/types';
 import {
   generateTimeOptions,
-  validarHorario,
   formatDateDisplay,
 } from '@/utils/dateTimeUtils';
 

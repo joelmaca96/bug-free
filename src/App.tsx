@@ -1,9 +1,7 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { ThemeProvider } from '@mui/material/styles';
-import CssBaseline from '@mui/material/CssBaseline';
 import { AuthProvider } from './contexts/AuthContext';
-import theme from './theme';
+import { ThemeProvider } from './contexts/ThemeContext';
 
 // Components
 import ProtectedRoute from './components/ProtectedRoute';
@@ -20,8 +18,7 @@ import ConfiguracionFarmacia from './pages/ConfiguracionFarmacia';
 
 const App: React.FC = () => {
   return (
-    <ThemeProvider theme={theme}>
-      <CssBaseline />
+    <ThemeProvider>
       <AuthProvider>
         <Router>
           <Routes>
