@@ -132,7 +132,7 @@ const CalendarioPage: React.FC = () => {
       console.log('Iniciando generación de calendario para el período:', generatePeriod);
 
       // Cargar configuración
-      const config = await getOrCreateConfiguracion(user.farmaciaId);
+      const config = await getOrCreateConfiguracion(user.uid, user.farmaciaId);
 
       // Eliminar turnos existentes en el período ANTES de generar nuevos
       await deleteTurnosByDateRange(
@@ -235,7 +235,7 @@ const CalendarioPage: React.FC = () => {
     if (!empleado) return;
 
     const turnosEmpleado = turnos.filter(t => t.empleadoId === turno.empleadoId && t.id !== turno.id);
-    const config = await getOrCreateConfiguracion(user.farmaciaId);
+    const config = await getOrCreateConfiguracion(user.uid, user.farmaciaId);
 
     if (!TurnoValidator.isValidAssignment(updatedTurno, empleado, turnosEmpleado, config)) {
       setError('El movimiento viola las restricciones de horario');
