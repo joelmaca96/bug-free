@@ -12,6 +12,7 @@ import {
 } from 'firebase/firestore';
 import { db } from './firebase';
 import { ConfiguracionAlgoritmo } from '@/types';
+import { getFarmaciaById } from './farmaciasService';
 
 const COLLECTION_NAME = 'configuracionesAlgoritmo';
 
@@ -82,18 +83,24 @@ export const getOrCreateConfiguracion = async (
     let config = await getConfiguracionByUserId(userId);
 
     if (!config) {
-      // Crear configuración por defecto para el usuario usando userId como ID del documento
-      const defaultConfig = getDefaultConfig(userId, farmaciaId);
-      const docRef = doc(db, COLLECTION_NAME, userId); // Usar userId como ID del documento
+      // Obtener empresaId de la farmacia
+      const farmacia = await getFarmaciaById(farmaciaId);
+      const empresaId = farmacia?.empresaId;
+
+      // Crear configuración por defecto
+      const defaultConfig = getDefaultConfig(farmaciaId);
+      const docRef = doc(collection(db, COLLECTION_NAME));
 
       await setDoc(docRef, {
         ...defaultConfig,
+        empresaId,
         fechaModificacion: serverTimestamp(),
       });
 
       config = {
         id: userId, // El ID es el userId
         ...defaultConfig,
+        empresaId,
       };
     }
 
