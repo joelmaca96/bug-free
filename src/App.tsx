@@ -17,6 +17,8 @@ import Empleados from './pages/Empleados';
 import ConfiguracionFarmacia from './pages/ConfiguracionFarmacia';
 import ConfiguracionAlgoritmo from './pages/ConfiguracionAlgoritmo';
 import SuperuserDashboard from './pages/SuperuserDashboard';
+import Calendario from './pages/Calendario';
+import Reportes from './pages/Reportes';
 
 const App: React.FC = () => {
   return (
@@ -92,6 +94,28 @@ const App: React.FC = () => {
                 <ProtectedRoute allowedRoles={['gestor', 'admin']}>
                   <Layout>
                     <ConfiguracionAlgoritmo />
+                  </Layout>
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="/calendario"
+              element={
+                <ProtectedRoute allowedRoles={['gestor', 'admin']}>
+                  <Layout>
+                    <Calendario />
+                  </Layout>
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="/reportes"
+              element={
+                <ProtectedRoute allowedRoles={['gestor', 'admin']}>
+                  <Layout>
+                    <Reportes />
                   </Layout>
                 </ProtectedRoute>
               }
