@@ -123,7 +123,8 @@ export interface ParametrosOptimizacion {
 
 export interface ConfiguracionAlgoritmo {
   id: string;
-  farmaciaId: string;
+  userId: string; // Usuario propietario de la configuración (una configuración por usuario)
+  farmaciaId: string; // Farmacia de referencia del usuario
   prioridades: PrioridadesAlgoritmo;
   restricciones: RestriccionesAlgoritmo;
   parametrosOptimizacion: ParametrosOptimizacion;
