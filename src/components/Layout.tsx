@@ -83,6 +83,13 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
         path: '/superuser',
         roles: ['superuser']
       },
+      { text: 'Empresas', icon: <BusinessIcon />, path: '/empresas', roles: ['superuser'] },
+      { text: 'Farmacias', icon: <LocalPharmacyIcon />, path: '/farmacias', roles: ['superuser'] },
+      { text: 'Empleados', icon: <PeopleIcon />, path: '/empleados', roles: ['superuser'] },
+      { text: 'Configuración Farmacia', icon: <SettingsIcon />, path: '/configuracion', roles: ['superuser'] },
+      { text: 'Configuración Algoritmo', icon: <SmartToyIcon />, path: '/algoritmo', roles: ['superuser'] },
+      { text: 'Calendario', icon: <CalendarMonthIcon />, path: '/calendario', roles: ['superuser'] },
+      { text: 'Reportes', icon: <AssessmentIcon />, path: '/reportes', roles: ['superuser'] },
     ];
 
     const gestorItems = [
@@ -94,7 +101,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     ];
 
     const adminItems = [
-      { text: 'Empresas', icon: <BusinessIcon />, path: '/empresas', roles: ['admin'] },
+      { text: 'Mi Empresa', icon: <BusinessIcon />, path: '/mi-empresa', roles: ['admin'] },
       { text: 'Farmacias', icon: <LocalPharmacyIcon />, path: '/farmacias', roles: ['admin'] },
     ];
 
@@ -120,8 +127,8 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   const drawer = (
     <div>
       <Toolbar>
-        <Typography variant="h6" noWrap component="div">
-          AgapitoDiSousa
+        <Typography variant="h6" noWrap component="div" sx={{ fontSize: { xs: '1.1rem', sm: '1.25rem' } }}>
+          Apoteke
         </Typography>
       </Toolbar>
       <Divider />
@@ -136,7 +143,12 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
               }}
             >
               <ListItemIcon>{item.icon}</ListItemIcon>
-              <ListItemText primary={item.text} />
+              <ListItemText
+                primary={item.text}
+                primaryTypographyProps={{
+                  sx: { fontSize: { xs: '0.875rem', sm: '1rem' } }
+                }}
+              />
             </ListItemButton>
           </ListItem>
         ))}
@@ -163,7 +175,15 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
           >
             <MenuIcon />
           </IconButton>
-          <Typography variant="h6" noWrap component="div" sx={{ flexGrow: 1 }}>
+          <Typography
+            variant="h6"
+            noWrap
+            component="div"
+            sx={{
+              flexGrow: 1,
+              fontSize: { xs: '1rem', sm: '1.25rem' }
+            }}
+          >
             {menuItems.find((item) => item.path === location.pathname)?.text || 'Dashboard'}
           </Typography>
           <ThemeToggle />

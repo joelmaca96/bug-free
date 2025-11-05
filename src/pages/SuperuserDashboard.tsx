@@ -16,42 +16,61 @@ import {
   CardContent,
   IconButton,
   Chip,
+  Tabs,
+  Tab,
+  FormControlLabel,
+  Checkbox,
+  DialogContentText,
 } from '@mui/material';
 import { DataGrid, GridColDef } from '@mui/x-data-grid';
 import AddIcon from '@mui/icons-material/Add';
 import DeleteIcon from '@mui/icons-material/Delete';
 import EmailIcon from '@mui/icons-material/Email';
+import EditIcon from '@mui/icons-material/Edit';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
 import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { auth, db } from '@/services/firebase';
-import { Usuario } from '@/types';
-import { getUsuariosByRol, deleteUsuario } from '@/services/usuariosService';
-import { getEmpresas } from '@/services/empresasService';
+import { Usuario, Empresa, Farmacia } from '@/types';
+import { getUsuarios, deleteUsuarioComplete } from '@/services/usuariosService';
+import { getEmpresas, deleteEmpresaCascade, getEmpresaById } from '@/services/empresasService';
+import { getFarmacias, deleteFarmacia } from '@/services/farmaciasService';
+import { useNavigate } from 'react-router-dom';
 
-interface Empresa {
-  id: string;
-  nombre: string;
-  cif: string;
+interface TabPanelProps {
+  children?: React.ReactNode;
+  index: number;
+  value: number;
+}
+
+function TabPanel(props: TabPanelProps) {
+  const { children, value, index, ...other } = props;
+  return (
+    <div hidden={value !== index} {...other}>
+      {value === index && <Box sx={{ p: 3 }}>{children}</Box>}
+    </div>
+  );
 }
 
 const SuperuserDashboard: React.FC = () => {
-  const [admins, setAdmins] = useState<Usuario[]>([]);
+  const navigate = useNavigate();
+  const [tabValue, setTabValue] = useState(0);
+
+  // Data states
+  const [usuarios, setUsuarios] = useState<Usuario[]>([]);
   const [empresas, setEmpresas] = useState<Empresa[]>([]);
+  const [farmacias, setFarmacias] = useState<Farmacia[]>([]);
+
+  // Loading states
   const [loading, setLoading] = useState(true);
-  const [openDialog, setOpenDialog] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
-  // Form state
-  const [formData, setFormData] = useState({
-    email: '',
-    password: '',
-    nombre: '',
-    apellidos: '',
-    nif: '',
-    telefono: '',
-    empresaId: '',
-  });
+  // Delete dialog states
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [deleteType, setDeleteType] = useState<'empresa' | 'farmacia' | 'usuario'>('empresa');
+  const [deleteId, setDeleteId] = useState('');
+  const [deleteFarmacias, setDeleteFarmacias] = useState(false);
+  const [deleteUsers, setDeleteUsers] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -60,12 +79,14 @@ const SuperuserDashboard: React.FC = () => {
   const loadData = async () => {
     try {
       setLoading(true);
-      const [adminsData, empresasData] = await Promise.all([
-        getUsuariosByRol('admin'),
+      const [usuariosData, empresasData, farmaciasData] = await Promise.all([
+        getUsuarios(),
         getEmpresas(),
+        getFarmacias(),
       ]);
-      setAdmins(adminsData);
-      setEmpresas(empresasData as any);
+      setUsuarios(usuariosData);
+      setEmpresas(empresasData);
+      setFarmacias(farmaciasData);
     } catch (err) {
       setError('Error al cargar los datos');
       console.error(err);
@@ -74,101 +95,127 @@ const SuperuserDashboard: React.FC = () => {
     }
   };
 
-  const handleCreateAdmin = async () => {
+  const handleDeleteClick = (type: 'empresa' | 'farmacia' | 'usuario', id: string) => {
+    setDeleteType(type);
+    setDeleteId(id);
+    setDeleteFarmacias(false);
+    setDeleteUsers(false);
+    setDeleteDialogOpen(true);
+  };
+
+  const handleDeleteConfirm = async () => {
     try {
       setError(null);
 
-      // Validaciones
-      if (!formData.email || !formData.password || !formData.nombre || !formData.apellidos) {
-        setError('Por favor complete todos los campos obligatorios');
-        return;
+      if (deleteType === 'empresa') {
+        await deleteEmpresaCascade(deleteId, deleteFarmacias, deleteUsers);
+        setSuccess('Empresa eliminada correctamente');
+      } else if (deleteType === 'farmacia') {
+        // TODO: Implement cascade delete for farmacia
+        await deleteFarmacia(deleteId);
+        setSuccess('Farmacia eliminada correctamente');
+      } else if (deleteType === 'usuario') {
+        await deleteUsuarioComplete(deleteId);
+        setSuccess('Usuario eliminado correctamente');
       }
 
-      if (formData.password.length < 6) {
-        setError('La contraseña debe tener al menos 6 caracteres');
-        return;
-      }
-
-      // Crear usuario en Firebase Auth
-      const userCredential = await createUserWithEmailAndPassword(
-        auth,
-        formData.email,
-        formData.password
-      );
-
-      // Crear documento en Firestore
-      const newAdmin: Omit<Usuario, 'uid'> = {
-        datosPersonales: {
-          nombre: formData.nombre,
-          apellidos: formData.apellidos,
-          nif: formData.nif,
-          email: formData.email,
-          telefono: formData.telefono,
-        },
-        rol: 'admin',
-        empresaId: formData.empresaId,
-        farmaciaId: '',
-        restricciones: {
-          horasMaximasDiarias: 10,
-          horasMaximasSemanales: 40,
-          horasMaximasMensuales: 160,
-          horasMaximasAnuales: 1920,
-          diasFestivos: [],
-        },
-      };
-
-      await setDoc(doc(db, 'usuarios', userCredential.user.uid), {
-        ...newAdmin,
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
-      });
-
-      // TODO: Enviar email de notificación (requiere Cloud Function)
-
-      setSuccess(`Admin ${formData.nombre} ${formData.apellidos} creado correctamente`);
-      setOpenDialog(false);
-      resetForm();
+      setDeleteDialogOpen(false);
       loadData();
     } catch (err: any) {
-      console.error('Error creating admin:', err);
-      if (err.code === 'auth/email-already-in-use') {
-        setError('Este email ya está en uso');
-      } else if (err.code === 'auth/weak-password') {
-        setError('La contraseña es demasiado débil');
-      } else {
-        setError('Error al crear el administrador');
-      }
-    }
-  };
-
-  const handleDeleteAdmin = async (uid: string) => {
-    if (!window.confirm('¿Está seguro de eliminar este administrador?')) {
-      return;
-    }
-
-    try {
-      await deleteUsuario(uid);
-      setSuccess('Administrador eliminado correctamente');
-      loadData();
-    } catch (err) {
-      setError('Error al eliminar el administrador');
+      setError(err.message || 'Error al eliminar');
       console.error(err);
     }
   };
 
-  const resetForm = () => {
-    setFormData({
-      email: '',
-      password: '',
-      nombre: '',
-      apellidos: '',
-      nif: '',
-      telefono: '',
-      empresaId: '',
-    });
+  const getAdminName = (adminId: string) => {
+    const admin = usuarios.find((u) => u.uid === adminId);
+    return admin ? `${admin.datosPersonales.nombre} ${admin.datosPersonales.apellidos}` : 'N/A';
   };
 
-  const columns: GridColDef[] = [
+  const getGestorName = (gestorId?: string) => {
+    if (!gestorId) return 'Sin asignar';
+    const gestor = usuarios.find((u) => u.uid === gestorId);
+    return gestor ? `${gestor.datosPersonales.nombre} ${gestor.datosPersonales.apellidos}` : 'N/A';
+  };
+
+  const getEmpresaName = (empresaId: string) => {
+    const empresa = empresas.find((e) => e.id === empresaId);
+    return empresa ? empresa.nombre : 'N/A';
+  };
+
+  // Columns for Empresas table
+  const empresasColumns: GridColDef[] = [
+    { field: 'nombre', headerName: 'Nombre', flex: 1 },
+    { field: 'cif', headerName: 'CIF', width: 120 },
+    { field: 'direccion', headerName: 'Dirección', flex: 1 },
+    {
+      field: 'adminId',
+      headerName: 'Administrador',
+      flex: 1,
+      renderCell: (params) => getAdminName(params.row.adminId),
+    },
+    {
+      field: 'actions',
+      headerName: 'Acciones',
+      width: 120,
+      sortable: false,
+      renderCell: (params) => (
+        <Box>
+          <IconButton size="small" onClick={() => navigate(`/empresas`)}>
+            <EditIcon />
+          </IconButton>
+          <IconButton
+            size="small"
+            color="error"
+            onClick={() => handleDeleteClick('empresa', params.row.id)}
+          >
+            <DeleteIcon />
+          </IconButton>
+        </Box>
+      ),
+    },
+  ];
+
+  // Columns for Farmacias table
+  const farmaciasColumns: GridColDef[] = [
+    { field: 'nombre', headerName: 'Nombre', flex: 1 },
+    { field: 'cif', headerName: 'CIF', width: 120 },
+    {
+      field: 'empresaId',
+      headerName: 'Empresa',
+      flex: 1,
+      renderCell: (params) => getEmpresaName(params.row.empresaId),
+    },
+    {
+      field: 'gestorId',
+      headerName: 'Gestor',
+      flex: 1,
+      renderCell: (params) => getGestorName(params.row.gestorId),
+    },
+    {
+      field: 'actions',
+      headerName: 'Acciones',
+      width: 120,
+      sortable: false,
+      renderCell: (params) => (
+        <Box>
+          <IconButton size="small" onClick={() => navigate(`/farmacias`)}>
+            <EditIcon />
+          </IconButton>
+          <IconButton
+            size="small"
+            color="error"
+            onClick={() => handleDeleteClick('farmacia', params.row.id)}
+          >
+            <DeleteIcon />
+          </IconButton>
+        </Box>
+      ),
+    },
+  ];
+
+  // Columns for Usuarios table
+  const usuariosColumns: GridColDef[] = [
     {
       field: 'nombre',
       headerName: 'Nombre',
@@ -188,19 +235,31 @@ const SuperuserDashboard: React.FC = () => {
       valueGetter: (params) => params.row.datosPersonales.email,
     },
     {
-      field: 'empresaId',
-      headerName: 'Empresa',
-      flex: 1,
-      renderCell: (params) => {
-        const empresa = empresas.find((e) => e.id === params.row.empresaId);
-        return empresa ? empresa.nombre : 'Sin asignar';
-      },
-    },
-    {
       field: 'rol',
       headerName: 'Rol',
       width: 120,
-      renderCell: () => <Chip label="Admin" color="primary" size="small" />,
+      renderCell: (params) => (
+        <Chip
+          label={params.row.rol}
+          color={
+            params.row.rol === 'superuser'
+              ? 'error'
+              : params.row.rol === 'admin'
+              ? 'primary'
+              : params.row.rol === 'gestor'
+              ? 'secondary'
+              : 'default'
+          }
+          size="small"
+        />
+      ),
+    },
+    {
+      field: 'empresaId',
+      headerName: 'Empresa',
+      flex: 1,
+      renderCell: (params) =>
+        params.row.empresaId ? getEmpresaName(params.row.empresaId) : 'N/A',
     },
     {
       field: 'actions',
@@ -209,10 +268,14 @@ const SuperuserDashboard: React.FC = () => {
       sortable: false,
       renderCell: (params) => (
         <Box>
+          <IconButton size="small" onClick={() => navigate(`/empleados`)}>
+            <EditIcon />
+          </IconButton>
           <IconButton
             size="small"
             color="error"
-            onClick={() => handleDeleteAdmin(params.row.uid)}
+            onClick={() => handleDeleteClick('usuario', params.row.uid)}
+            disabled={params.row.rol === 'superuser'}
           >
             <DeleteIcon />
           </IconButton>
@@ -230,18 +293,10 @@ const SuperuserDashboard: React.FC = () => {
   }
 
   return (
-    <Box p={3}>
-      <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
-        <Typography variant="h4">Panel de Superusuario</Typography>
-        <Button
-          variant="contained"
-          color="primary"
-          startIcon={<AddIcon />}
-          onClick={() => setOpenDialog(true)}
-        >
-          Crear Administrador
-        </Button>
-      </Box>
+    <Box>
+      <Typography variant="h4" gutterBottom sx={{ mb: 3 }}>
+        Panel de Gestión Superuser
+      </Typography>
 
       {error && (
         <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>
@@ -257,21 +312,10 @@ const SuperuserDashboard: React.FC = () => {
 
       {/* Estadísticas */}
       <Grid container spacing={3} mb={3}>
-        <Grid item xs={12} md={4}>
+        <Grid item xs={12} md={3}>
           <Card>
             <CardContent>
-              <Typography variant="h6" color="textSecondary" gutterBottom>
-                Total Administradores
-              </Typography>
-              <Typography variant="h3">{admins.length}</Typography>
-            </CardContent>
-          </Card>
-        </Grid>
-
-        <Grid item xs={12} md={4}>
-          <Card>
-            <CardContent>
-              <Typography variant="h6" color="textSecondary" gutterBottom>
+              <Typography variant="h6" color="textSecondary" gutterBottom sx={{ fontSize: { xs: '0.9rem', md: '1.25rem' } }}>
                 Total Empresas
               </Typography>
               <Typography variant="h3">{empresas.length}</Typography>
@@ -279,29 +323,123 @@ const SuperuserDashboard: React.FC = () => {
           </Card>
         </Grid>
 
-        <Grid item xs={12} md={4}>
+        <Grid item xs={12} md={3}>
           <Card>
             <CardContent>
-              <Typography variant="h6" color="textSecondary" gutterBottom>
-                Admins Sin Empresa
+              <Typography variant="h6" color="textSecondary" gutterBottom sx={{ fontSize: { xs: '0.9rem', md: '1.25rem' } }}>
+                Total Farmacias
+              </Typography>
+              <Typography variant="h3">{farmacias.length}</Typography>
+            </CardContent>
+          </Card>
+        </Grid>
+
+        <Grid item xs={12} md={3}>
+          <Card>
+            <CardContent>
+              <Typography variant="h6" color="textSecondary" gutterBottom sx={{ fontSize: { xs: '0.9rem', md: '1.25rem' } }}>
+                Total Usuarios
+              </Typography>
+              <Typography variant="h3">{usuarios.length}</Typography>
+            </CardContent>
+          </Card>
+        </Grid>
+
+        <Grid item xs={12} md={3}>
+          <Card>
+            <CardContent>
+              <Typography variant="h6" color="textSecondary" gutterBottom sx={{ fontSize: { xs: '0.9rem', md: '1.25rem' } }}>
+                Admins Disponibles
               </Typography>
               <Typography variant="h3">
-                {admins.filter((a) => !a.empresaId).length}
+                {usuarios.filter((u) => u.rol === 'admin' && !u.empresaId).length}
               </Typography>
             </CardContent>
           </Card>
         </Grid>
       </Grid>
 
-      {/* Tabla de administradores */}
-      <Paper>
-        <Box p={2}>
-          <Typography variant="h6" gutterBottom>
-            Administradores del Sistema
-          </Typography>
+      {/* Tabs */}
+      <Paper sx={{ mb: 3 }}>
+        <Tabs value={tabValue} onChange={(e, newValue) => setTabValue(newValue)}>
+          <Tab label="Empresas" />
+          <Tab label="Farmacias" />
+          <Tab label="Usuarios" />
+        </Tabs>
+      </Paper>
+
+      {/* Tab Panels */}
+      <TabPanel value={tabValue} index={0}>
+        <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
+          <Typography variant="h6">Gestión de Empresas</Typography>
+          <Button
+            variant="contained"
+            startIcon={<AddIcon />}
+            onClick={() => navigate('/empresas')}
+          >
+            Crear Empresa
+          </Button>
+        </Box>
+        <Paper>
           <DataGrid
-            rows={admins}
-            columns={columns}
+            rows={empresas}
+            columns={empresasColumns}
+            getRowId={(row) => row.id}
+            autoHeight
+            disableRowSelectionOnClick
+            initialState={{
+              pagination: {
+                paginationModel: { pageSize: 10 },
+              },
+            }}
+            pageSizeOptions={[10, 25, 50]}
+          />
+        </Paper>
+      </TabPanel>
+
+      <TabPanel value={tabValue} index={1}>
+        <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
+          <Typography variant="h6">Gestión de Farmacias</Typography>
+          <Button
+            variant="contained"
+            startIcon={<AddIcon />}
+            onClick={() => navigate('/farmacias')}
+          >
+            Crear Farmacia
+          </Button>
+        </Box>
+        <Paper>
+          <DataGrid
+            rows={farmacias}
+            columns={farmaciasColumns}
+            getRowId={(row) => row.id}
+            autoHeight
+            disableRowSelectionOnClick
+            initialState={{
+              pagination: {
+                paginationModel: { pageSize: 10 },
+              },
+            }}
+            pageSizeOptions={[10, 25, 50]}
+          />
+        </Paper>
+      </TabPanel>
+
+      <TabPanel value={tabValue} index={2}>
+        <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
+          <Typography variant="h6">Gestión de Usuarios</Typography>
+          <Button
+            variant="contained"
+            startIcon={<AddIcon />}
+            onClick={() => navigate('/empleados')}
+          >
+            Crear Usuario
+          </Button>
+        </Box>
+        <Paper>
+          <DataGrid
+            rows={usuarios}
+            columns={usuariosColumns}
             getRowId={(row) => row.uid}
             autoHeight
             disableRowSelectionOnClick
@@ -312,83 +450,59 @@ const SuperuserDashboard: React.FC = () => {
             }}
             pageSizeOptions={[10, 25, 50]}
           />
-        </Box>
-      </Paper>
+        </Paper>
+      </TabPanel>
 
-      {/* Dialog para crear admin */}
-      <Dialog open={openDialog} onClose={() => setOpenDialog(false)} maxWidth="md" fullWidth>
-        <DialogTitle>Crear Nuevo Administrador</DialogTitle>
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={deleteDialogOpen} onClose={() => setDeleteDialogOpen(false)}>
+        <DialogTitle>Confirmar Eliminación</DialogTitle>
         <DialogContent>
-          <Grid container spacing={2} sx={{ mt: 1 }}>
-            <Grid item xs={12} md={6}>
-              <TextField
-                fullWidth
-                label="Nombre *"
-                value={formData.nombre}
-                onChange={(e) => setFormData({ ...formData, nombre: e.target.value })}
-              />
-            </Grid>
+          <DialogContentText>
+            ¿Está seguro de que desea eliminar este{' '}
+            {deleteType === 'empresa' ? 'empresa' : deleteType === 'farmacia' ? 'farmacia' : 'usuario'}?
+          </DialogContentText>
 
-            <Grid item xs={12} md={6}>
-              <TextField
-                fullWidth
-                label="Apellidos *"
-                value={formData.apellidos}
-                onChange={(e) => setFormData({ ...formData, apellidos: e.target.value })}
+          {deleteType === 'empresa' && (
+            <Box sx={{ mt: 2 }}>
+              <FormControlLabel
+                control={
+                  <Checkbox
+                    checked={deleteFarmacias}
+                    onChange={(e) => setDeleteFarmacias(e.target.checked)}
+                  />
+                }
+                label="Eliminar también todas las farmacias asociadas"
               />
-            </Grid>
-
-            <Grid item xs={12} md={6}>
-              <TextField
-                fullWidth
-                label="NIF"
-                value={formData.nif}
-                onChange={(e) => setFormData({ ...formData, nif: e.target.value })}
+              <FormControlLabel
+                control={
+                  <Checkbox
+                    checked={deleteUsers}
+                    onChange={(e) => setDeleteUsers(e.target.checked)}
+                  />
+                }
+                label="Eliminar también todos los usuarios asociados"
               />
-            </Grid>
+            </Box>
+          )}
 
-            <Grid item xs={12} md={6}>
-              <TextField
-                fullWidth
-                label="Teléfono"
-                value={formData.telefono}
-                onChange={(e) => setFormData({ ...formData, telefono: e.target.value })}
+          {deleteType === 'farmacia' && (
+            <Box sx={{ mt: 2 }}>
+              <FormControlLabel
+                control={
+                  <Checkbox
+                    checked={deleteUsers}
+                    onChange={(e) => setDeleteUsers(e.target.checked)}
+                  />
+                }
+                label="Eliminar también todos los usuarios de la farmacia"
               />
-            </Grid>
-
-            <Grid item xs={12}>
-              <TextField
-                fullWidth
-                type="email"
-                label="Email *"
-                value={formData.email}
-                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-              />
-            </Grid>
-
-            <Grid item xs={12}>
-              <TextField
-                fullWidth
-                type="password"
-                label="Contraseña *"
-                value={formData.password}
-                onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                helperText="Mínimo 6 caracteres"
-              />
-            </Grid>
-
-            <Grid item xs={12}>
-              <Alert severity="info" icon={<EmailIcon />}>
-                Se enviará un email al administrador notificándole de su nuevo rol y las
-                credenciales de acceso.
-              </Alert>
-            </Grid>
-          </Grid>
+            </Box>
+          )}
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setOpenDialog(false)}>Cancelar</Button>
-          <Button variant="contained" color="primary" onClick={handleCreateAdmin}>
-            Crear Administrador
+          <Button onClick={() => setDeleteDialogOpen(false)}>Cancelar</Button>
+          <Button variant="contained" color="error" onClick={handleDeleteConfirm}>
+            Eliminar
           </Button>
         </DialogActions>
       </Dialog>

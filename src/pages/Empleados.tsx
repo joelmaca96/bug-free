@@ -16,6 +16,8 @@ import {
   Typography,
   Chip,
   Tooltip,
+  FormControlLabel,
+  Checkbox,
 } from '@mui/material';
 import { DataGrid, GridColDef, GridActionsCellItem } from '@mui/x-data-grid';
 import AddIcon from '@mui/icons-material/Add';
@@ -26,8 +28,10 @@ import AccessTimeIcon from '@mui/icons-material/AccessTime';
 import {
   getUsuarios,
   getUsuariosByFarmacia,
+  getUsuariosByEmpresa,
   updateUsuario,
   deleteUsuario,
+  deleteUsuarioComplete,
 } from '@/services/usuariosService';
 import { getFarmacias } from '@/services/farmaciasService';
 import { getEmpresas } from '@/services/empresasService';
@@ -87,6 +91,7 @@ const Empleados: React.FC = () => {
       horasMaximasAnuales: 1920,
       diasFestivos: [] as string[],
     },
+    incluirEnCalendario: true,
   });
 
   const [errors, setErrors] = useState({
@@ -115,10 +120,16 @@ const Empleados: React.FC = () => {
 
       // Cargar usuarios según el rol
       let usuariosData: Usuario[];
-      if (user?.rol === 'admin') {
+      if (user?.rol === 'superuser') {
+        // SuperUser puede ver todos los usuarios
         usuariosData = await getUsuarios();
+      } else if (user?.rol === 'admin' && user.empresaId) {
+        // Admin puede ver usuarios de su empresa (excepto superusers)
+        usuariosData = await getUsuariosByEmpresa(user.empresaId, true);
       } else if (user?.rol === 'gestor' && user.farmaciaId) {
-        usuariosData = await getUsuariosByFarmacia(user.farmaciaId);
+        // Gestor puede ver usuarios de su farmacia (excepto superusers)
+        const allUsers = await getUsuariosByFarmacia(user.farmaciaId);
+        usuariosData = allUsers.filter(u => u.rol !== 'superuser');
       } else {
         usuariosData = [];
       }
@@ -190,6 +201,7 @@ const Empleados: React.FC = () => {
         farmaciaId: usuario.farmaciaId,
         empresaId: usuario.empresaId,
         restricciones: usuario.restricciones,
+        incluirEnCalendario: usuario.incluirEnCalendario !== undefined ? usuario.incluirEnCalendario : true,
       });
     } else {
       setEditingUsuario(null);
@@ -211,6 +223,7 @@ const Empleados: React.FC = () => {
           horasMaximasAnuales: 1920,
           diasFestivos: [],
         },
+        incluirEnCalendario: true,
       });
     }
     setErrors({
@@ -239,8 +252,22 @@ const Empleados: React.FC = () => {
 
     try {
       if (editingUsuario) {
-        await updateUsuario(editingUsuario.uid, formData);
-        showSnackbar('Empleado actualizado correctamente', 'success');
+        // Si el usuario está editando sus propios datos, solo permitir cambiar datosPersonales y restricciones
+        const isEditingSelf = editingUsuario.uid === user?.uid;
+
+        if (isEditingSelf) {
+          // Solo actualizar campos que el usuario puede modificar
+          await updateUsuario(editingUsuario.uid, {
+            datosPersonales: formData.datosPersonales,
+            restricciones: formData.restricciones,
+            incluirEnCalendario: formData.incluirEnCalendario,
+          });
+          showSnackbar('Tus datos han sido actualizados correctamente', 'success');
+        } else {
+          // Usuario con permisos puede actualizar todo
+          await updateUsuario(editingUsuario.uid, formData);
+          showSnackbar('Empleado actualizado correctamente', 'success');
+        }
       } else {
         // Para crear nuevos empleados, se requeriría integración con Auth
         // Por ahora solo permitimos editar existentes
@@ -255,9 +282,9 @@ const Empleados: React.FC = () => {
   };
 
   const handleDelete = async (uid: string) => {
-    if (window.confirm('¿Está seguro de eliminar este empleado?')) {
+    if (window.confirm('¿Está seguro de eliminar este empleado? Esto eliminará también sus credenciales de acceso.')) {
       try {
-        await deleteUsuario(uid);
+        await deleteUsuarioComplete(uid);
         showSnackbar('Empleado eliminado correctamente', 'success');
         loadData();
       } catch (error) {
@@ -478,14 +505,17 @@ const Empleados: React.FC = () => {
                   value={formData.rol}
                   onChange={(e) => setFormData({ ...formData, rol: e.target.value as UserRole })}
                   required
-                  disabled={user?.rol !== 'admin'}
+                  disabled={editingUsuario?.uid === user?.uid || user?.rol === 'gestor'}
                 >
                   <MenuItem value="empleado">Empleado</MenuItem>
-                  <MenuItem value="gestor">Gestor</MenuItem>
-                  {user?.rol === 'admin' && <MenuItem value="admin">Admin</MenuItem>}
+                  {(user?.rol === 'admin' || user?.rol === 'superuser') && (
+                    <MenuItem value="gestor">Gestor</MenuItem>
+                  )}
+                  {user?.rol === 'superuser' && <MenuItem value="admin">Admin</MenuItem>}
+                  {user?.rol === 'superuser' && <MenuItem value="superuser">SuperUser</MenuItem>}
                 </TextField>
               </Grid>
-              {user?.rol === 'admin' && (
+              {(user?.rol === 'admin' || user?.rol === 'superuser') && (
                 <>
                   <Grid item xs={12} sm={6}>
                     <TextField
@@ -494,7 +524,8 @@ const Empleados: React.FC = () => {
                       label="Empresa"
                       value={formData.empresaId}
                       onChange={(e) => setFormData({ ...formData, empresaId: e.target.value })}
-                      required
+                      required={user?.rol === 'superuser'}
+                      disabled={editingUsuario?.uid === user?.uid || user?.rol === 'admin'}
                     >
                       {empresas.map((empresa) => (
                         <MenuItem key={empresa.id} value={empresa.id}>
@@ -507,11 +538,15 @@ const Empleados: React.FC = () => {
                     <TextField
                       select
                       fullWidth
-                      label="Farmacia"
+                      label={formData.rol === 'admin' ? 'Farmacia (Opcional - si es gestor)' : 'Farmacia'}
                       value={formData.farmaciaId}
                       onChange={(e) => setFormData({ ...formData, farmaciaId: e.target.value })}
-                      required
+                      required={formData.rol !== 'admin'}
+                      disabled={editingUsuario?.uid === user?.uid}
                     >
+                      {formData.rol === 'admin' && (
+                        <MenuItem value="">Sin farmacia asignada</MenuItem>
+                      )}
                       {farmacias
                         .filter((f) => !formData.empresaId || f.empresaId === formData.empresaId)
                         .map((farmacia) => (
@@ -620,6 +655,21 @@ const Empleados: React.FC = () => {
               {errors.restricciones && (
                 <Grid item xs={12}>
                   <Alert severity="error">{errors.restricciones}</Alert>
+                </Grid>
+              )}
+              {(formData.rol === 'admin' || formData.rol === 'gestor') && (
+                <Grid item xs={12}>
+                  <FormControlLabel
+                    control={
+                      <Checkbox
+                        checked={formData.incluirEnCalendario}
+                        onChange={(e) =>
+                          setFormData({ ...formData, incluirEnCalendario: e.target.checked })
+                        }
+                      />
+                    }
+                    label="Incluir en el calendario (si desmarcas esta opción, no se tendrá en cuenta para generar turnos)"
+                  />
                 </Grid>
               )}
             </Grid>

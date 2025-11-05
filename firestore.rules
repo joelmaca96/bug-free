@@ -12,6 +12,11 @@ service cloud.firestore {
       return get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data;
     }
 
+    // Función para verificar si el usuario es superuser
+    function isSuperuser() {
+      return isAuthenticated() && getUserData().rol == 'superuser';
+    }
+
     // Función para verificar si el usuario es admin
     function isAdmin() {
       return isAuthenticated() && getUserData().rol == 'admin';
@@ -32,83 +37,158 @@ service cloud.firestore {
       return isAuthenticated() && getUserData().farmaciaId == farmaciaId;
     }
 
+    // Función para verificar si el usuario es admin o gestor de una farmacia
+    function isAdminOrGestorOfFarmacia(farmaciaId) {
+      let userData = getUserData();
+      return isAuthenticated() && (
+        (userData.rol == 'admin' && farmaciaInUserEmpresa(farmaciaId)) ||
+        (userData.farmaciaId == farmaciaId && (userData.rol == 'gestor' || userData.rol == 'admin'))
+      );
+    }
+
+    // Función para verificar si una farmacia pertenece a la empresa del usuario
+    function farmaciaInUserEmpresa(farmaciaId) {
+      let farmacia = get(/databases/$(database)/documents/farmacias/$(farmaciaId)).data;
+      return isAuthenticated() && getUserData().empresaId == farmacia.empresaId;
+    }
+
     // Reglas para usuarios
     match /usuarios/{userId} {
-      // Los usuarios pueden leer su propia información
+      // SuperUser puede ver todos los usuarios
+      // Admin puede ver usuarios de su empresa (excepto superusers)
+      // Gestor puede ver usuarios de su farmacia (excepto superusers)
+      // Usuarios pueden ver su propia información
       allow read: if isAuthenticated() && (
         request.auth.uid == userId ||
-        isAdmin() ||
-        (isGestor() && isSameFarmacia(resource.data.farmaciaId))
+        isSuperuser() ||
+        (isAdmin() && isSameEmpresa(resource.data.empresaId) && resource.data.rol != 'superuser') ||
+        (isGestor() && isSameFarmacia(resource.data.farmaciaId) && resource.data.rol != 'superuser')
       );
 
-      // Permitir crear su propio perfil al registrarse o admins pueden crear usuarios
-      allow create: if (isAuthenticated() && request.auth.uid == userId) || isAdmin();
+      // SuperUser puede crear cualquier usuario
+      // Admin puede crear gestores y empleados de su empresa
+      // Gestor puede crear empleados de su farmacia
+      allow create: if isAuthenticated() && (
+        (request.auth.uid == userId && request.resource.data.rol == 'empleado') ||
+        isSuperuser() ||
+        (isAdmin() && isSameEmpresa(request.resource.data.empresaId) &&
+         request.resource.data.rol in ['gestor', 'empleado']) ||
+        (isGestor() && isSameFarmacia(request.resource.data.farmaciaId) &&
+         request.resource.data.rol == 'empleado')
+      );
 
       // Los usuarios pueden actualizar su propia información (excepto rol y asignaciones)
-      // Los admins y gestores pueden actualizar usuarios de su farmacia
+      // SuperUser puede actualizar cualquier usuario
+      // Admin puede actualizar usuarios de su empresa (excepto superusers)
+      // Gestor puede actualizar empleados de su farmacia
       allow update: if isAuthenticated() && (
         (request.auth.uid == userId &&
          request.resource.data.rol == resource.data.rol &&
          request.resource.data.farmaciaId == resource.data.farmaciaId &&
          request.resource.data.empresaId == resource.data.empresaId) ||
-        isAdmin() ||
-        (isGestor() && isSameFarmacia(resource.data.farmaciaId))
+        isSuperuser() ||
+        (isAdmin() && isSameEmpresa(resource.data.empresaId) && resource.data.rol != 'superuser') ||
+        (isGestor() && isSameFarmacia(resource.data.farmaciaId) && resource.data.rol == 'empleado')
       );
 
-      // Solo admins pueden eliminar usuarios
-      allow delete: if isAdmin();
+      // SuperUser puede eliminar cualquier usuario
+      // Admin puede eliminar usuarios de su empresa (excepto superusers)
+      allow delete: if isSuperuser() || (isAdmin() && isSameEmpresa(resource.data.empresaId) && resource.data.rol != 'superuser');
     }
 
     // Reglas para empresas
     match /empresas/{empresaId} {
-      // Los usuarios autenticados pueden leer empresas a las que pertenecen
-      allow read: if isAuthenticated() && (isAdmin() || isSameEmpresa(empresaId));
+      // SuperUser puede ver todas las empresas
+      // Admin puede ver su propia empresa
+      allow read: if isAuthenticated() && (
+        isSuperuser() ||
+        (isAdmin() && isSameEmpresa(empresaId))
+      );
 
-      // Solo admins pueden crear, actualizar y eliminar empresas
-      allow create, update, delete: if isAdmin();
+      // Solo SuperUser puede crear empresas
+      allow create: if isSuperuser();
+
+      // SuperUser puede actualizar cualquier empresa
+      // Admin puede actualizar solo su propia empresa
+      allow update: if isSuperuser() || (isAdmin() && isSameEmpresa(empresaId));
+
+      // Solo SuperUser puede eliminar empresas
+      allow delete: if isSuperuser();
     }
 
     // Reglas para farmacias
     match /farmacias/{farmaciaId} {
-      // Los usuarios pueden leer farmacias de su empresa o su farmacia específica
+      // SuperUser puede ver todas las farmacias
+      // Admin puede ver farmacias de su empresa
+      // Gestor puede ver su farmacia asignada
       allow read: if isAuthenticated() && (
-        isAdmin() ||
-        isSameEmpresa(resource.data.empresaId) ||
-        isSameFarmacia(farmaciaId)
+        isSuperuser() ||
+        (isAdmin() && isSameEmpresa(resource.data.empresaId)) ||
+        (isGestor() && isSameFarmacia(farmaciaId))
       );
 
-      // Solo admins pueden crear farmacias
-      allow create: if isAdmin();
+      // SuperUser y Admin pueden crear farmacias
+      allow create: if isSuperuser() || isAdmin();
 
-      // Admins y gestores de la farmacia pueden actualizar
-      allow update: if isAdmin() || (isGestor() && isSameFarmacia(farmaciaId));
+      // SuperUser puede actualizar cualquier farmacia
+      // Admin puede actualizar farmacias de su empresa
+      // Gestor puede actualizar su farmacia asignada
+      allow update: if isSuperuser() ||
+        (isAdmin() && isSameEmpresa(resource.data.empresaId)) ||
+        (isGestor() && isSameFarmacia(farmaciaId));
 
-      // Solo admins pueden eliminar farmacias
-      allow delete: if isAdmin();
+      // SuperUser y Admin pueden eliminar farmacias
+      allow delete: if isSuperuser() || (isAdmin() && isSameEmpresa(resource.data.empresaId));
     }
 
     // Reglas para calendarios y turnos
     match /calendarios/{farmaciaId}/turnos/{turnoId} {
-      // Los usuarios pueden ver turnos de su farmacia
-      allow read: if isAuthenticated() && isSameFarmacia(farmaciaId);
+      // SuperUser puede ver todos los turnos
+      // Admin puede ver turnos de farmacias de su empresa
+      // Gestor puede ver turnos de su farmacia
+      // Empleados pueden ver turnos de su farmacia
+      allow read: if isAuthenticated() && (
+        isSuperuser() ||
+        (isAdmin() && farmaciaInUserEmpresa(farmaciaId)) ||
+        isSameFarmacia(farmaciaId)
+      );
 
-      // Solo gestores y admins pueden crear y modificar turnos
-      allow create, update: if isAdmin() || (isGestor() && isSameFarmacia(farmaciaId));
+      // SuperUser puede crear/modificar cualquier turno
+      // Admin puede crear/modificar turnos de farmacias de su empresa
+      // Gestor puede crear/modificar turnos de su farmacia
+      allow create, update: if isSuperuser() ||
+        (isAdmin() && farmaciaInUserEmpresa(farmaciaId)) ||
+        (isGestor() && isSameFarmacia(farmaciaId));
 
-      // Solo gestores y admins pueden eliminar turnos
-      allow delete: if isAdmin() || (isGestor() && isSameFarmacia(farmaciaId));
+      // SuperUser puede eliminar cualquier turno
+      // Admin puede eliminar turnos de farmacias de su empresa
+      // Gestor puede eliminar turnos de su farmacia
+      allow delete: if isSuperuser() ||
+        (isAdmin() && farmaciaInUserEmpresa(farmaciaId)) ||
+        (isGestor() && isSameFarmacia(farmaciaId));
     }
 
     // Reglas para configuración del algoritmo
     match /configuracionesAlgoritmo/{farmaciaId} {
-      // Los usuarios pueden leer la configuración de su farmacia
-      allow read: if isAuthenticated() && isSameFarmacia(farmaciaId);
+      // SuperUser puede leer todas las configuraciones
+      // Admin puede leer configuraciones de farmacias de su empresa
+      // Gestor puede leer configuración de su farmacia
+      allow read: if isAuthenticated() && (
+        isSuperuser() ||
+        (isAdmin() && farmaciaInUserEmpresa(farmaciaId)) ||
+        isSameFarmacia(farmaciaId)
+      );
 
-      // Solo gestores y admins pueden modificar la configuración
-      allow create, update: if isAdmin() || (isGestor() && isSameFarmacia(farmaciaId));
+      // SuperUser puede crear/modificar cualquier configuración
+      // Admin puede crear/modificar configuraciones de farmacias de su empresa
+      // Gestor puede crear/modificar configuración de su farmacia
+      allow create, update: if isSuperuser() ||
+        (isAdmin() && farmaciaInUserEmpresa(farmaciaId)) ||
+        (isGestor() && isSameFarmacia(farmaciaId));
 
-      // Solo admins pueden eliminar configuraciones
-      allow delete: if isAdmin();
+      // SuperUser puede eliminar cualquier configuración
+      // Admin puede eliminar configuraciones de farmacias de su empresa
+      allow delete: if isSuperuser() || (isAdmin() && farmaciaInUserEmpresa(farmaciaId));
     }
 
     // Denegar acceso a cualquier otra colección no especificada

@@ -87,7 +87,7 @@ const Login: React.FC = () => {
         <Paper
           elevation={8}
           sx={{
-            p: 5,
+            p: { xs: 3, sm: 4, md: 5 },
             width: '100%',
             borderRadius: 4,
             animation: 'slideUp 0.5s ease-out',
@@ -110,19 +110,21 @@ const Login: React.FC = () => {
               gutterBottom
               sx={{
                 fontWeight: 700,
+                fontSize: { xs: '2rem', sm: '2.5rem', md: '3rem' },
                 background: theme.palette.gradient.secondary,
                 WebkitBackgroundClip: 'text',
                 WebkitTextFillColor: 'transparent',
                 backgroundClip: 'text',
               }}
             >
-              AgapitoDiSousa
+              Apoteke
             </Typography>
             <Typography
               variant="subtitle1"
               color="text.secondary"
               sx={{
                 fontWeight: 500,
+                fontSize: { xs: '0.875rem', sm: '1rem' },
               }}
             >
               Sistema de Gestión de Horarios

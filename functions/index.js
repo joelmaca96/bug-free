@@ -1,34 +1,39 @@
 /**
- * Cloud Functions para AgapitoDiSousa
+ * Cloud Functions para Apoteke
  *
  * Funciones principales:
  * - Envío de emails de notificación
  * - Generación de reportes PDF
  * - Cálculo y distribución de turnos
+ * - Eliminación de usuarios de Firebase Auth
  */
 
-const functions = require('firebase-functions');
+// Cargar variables de entorno desde .env (solo para desarrollo local)
+require('dotenv').config();
+
+const {onDocumentCreated} = require('firebase-functions/v2/firestore');
+const {onCall, HttpsError} = require('firebase-functions/v2/https');
 const admin = require('firebase-admin');
 const nodemailer = require('nodemailer');
 
 admin.initializeApp();
 
-// Configurar transporter de nodemailer
-// IMPORTANTE: Configurar las credenciales de email en Firebase Config
-const transporter = nodemailer.createTransport({
-  service: 'gmail', // o el servicio de email que uses
-  auth: {
-    user: functions.config().email?.user || 'your-email@gmail.com',
-    pass: functions.config().email?.password || 'your-password',
-  },
-});
+// Helper function to get transporter (evaluated at runtime)
+function getTransporter() {
+  return nodemailer.createTransport({
+    service: 'gmail', // o el servicio de email que uses
+    auth: {
+      user: process.env.EMAIL_USER || 'your-email@gmail.com',
+      pass: process.env.EMAIL_PASSWORD || 'your-password',
+    },
+  });
+}
 
 /**
  * Enviar email de notificación cuando se crea un nuevo admin
  */
-exports.sendAdminCreatedEmail = functions.firestore
-  .document('usuarios/{userId}')
-  .onCreate(async (snap, context) => {
+exports.sendAdminCreatedEmail = onDocumentCreated('usuarios/{userId}', async (event) => {
+    const snap = event.data;
     const userData = snap.data();
 
     // Solo enviar email si es un admin
@@ -61,6 +66,7 @@ exports.sendAdminCreatedEmail = functions.firestore
     };
 
     try {
+      const transporter = getTransporter();
       await transporter.sendMail(mailOptions);
       console.log('Email sent to admin:', userData.datosPersonales.email);
       return null;
@@ -73,9 +79,8 @@ exports.sendAdminCreatedEmail = functions.firestore
 /**
  * Enviar email de notificación cuando se crea un nuevo gestor
  */
-exports.sendGestorCreatedEmail = functions.firestore
-  .document('usuarios/{userId}')
-  .onCreate(async (snap, context) => {
+exports.sendGestorCreatedEmail = onDocumentCreated('usuarios/{userId}', async (event) => {
+    const snap = event.data;
     const userData = snap.data();
 
     // Solo enviar email si es un gestor
@@ -116,6 +121,7 @@ exports.sendGestorCreatedEmail = functions.firestore
     };
 
     try {
+      const transporter = getTransporter();
       await transporter.sendMail(mailOptions);
       console.log('Email sent to gestor:', userData.datosPersonales.email);
       return null;
@@ -128,9 +134,8 @@ exports.sendGestorCreatedEmail = functions.firestore
 /**
  * Enviar email de notificación cuando se crea un nuevo empleado
  */
-exports.sendEmpleadoCreatedEmail = functions.firestore
-  .document('usuarios/{userId}')
-  .onCreate(async (snap, context) => {
+exports.sendEmpleadoCreatedEmail = onDocumentCreated('usuarios/{userId}', async (event) => {
+    const snap = event.data;
     const userData = snap.data();
 
     // Solo enviar email si es un empleado
@@ -170,6 +175,7 @@ exports.sendEmpleadoCreatedEmail = functions.firestore
     };
 
     try {
+      const transporter = getTransporter();
       await transporter.sendMail(mailOptions);
       console.log('Email sent to empleado:', userData.datosPersonales.email);
       return null;
@@ -182,14 +188,16 @@ exports.sendEmpleadoCreatedEmail = functions.firestore
 /**
  * Callable function para enviar horario por email
  */
-exports.sendScheduleEmail = functions.https.onCall(async (data, context) => {
+exports.sendScheduleEmail = onCall(async (request) => {
   // Verificar que el usuario está autenticado
-  if (!context.auth) {
-    throw new functions.https.HttpsError(
+  if (!request.auth) {
+    throw new HttpsError(
       'unauthenticated',
       'Usuario debe estar autenticado'
     );
   }
+
+  const data = request.data;
 
   const { empleadoId, fechaInicio, fechaFin, farmaciaId } = data;
 
@@ -197,7 +205,7 @@ exports.sendScheduleEmail = functions.https.onCall(async (data, context) => {
     // Obtener datos del empleado
     const empleadoDoc = await admin.firestore().doc(`usuarios/${empleadoId}`).get();
     if (!empleadoDoc.exists) {
-      throw new functions.https.HttpsError('not-found', 'Empleado no encontrado');
+      throw new HttpsError('not-found', 'Empleado no encontrado');
     }
 
     const empleado = empleadoDoc.data();
@@ -249,11 +257,59 @@ exports.sendScheduleEmail = functions.https.onCall(async (data, context) => {
       `,
     };
 
+    const transporter = getTransporter();
     await transporter.sendMail(mailOptions);
 
     return { success: true, message: 'Email enviado correctamente' };
   } catch (error) {
     console.error('Error sending schedule email:', error);
-    throw new functions.https.HttpsError('internal', 'Error al enviar el email');
+    throw new HttpsError('internal', 'Error al enviar el email');
+  }
+});
+
+/**
+ * Callable function para eliminar usuario de Firebase Auth
+ * Solo puede ser llamada por SuperUser o Admin
+ */
+exports.deleteUserAuth = onCall(async (request) => {
+  // Verificar que el usuario está autenticado
+  if (!request.auth) {
+    throw new HttpsError(
+      'unauthenticated',
+      'Usuario debe estar autenticado'
+    );
+  }
+
+  // Verificar que el usuario es SuperUser o Admin
+  const callerDoc = await admin.firestore().doc(`usuarios/${request.auth.uid}`).get();
+  if (!callerDoc.exists) {
+    throw new HttpsError('not-found', 'Usuario no encontrado');
+  }
+
+  const caller = callerDoc.data();
+  if (caller.rol !== 'superuser' && caller.rol !== 'admin') {
+    throw new HttpsError(
+      'permission-denied',
+      'Solo SuperUser o Admin pueden eliminar usuarios'
+    );
+  }
+
+  const { uid } = request.data;
+
+  if (!uid) {
+    throw new HttpsError('invalid-argument', 'UID es requerido');
+  }
+
+  try {
+    // Eliminar usuario de Firebase Auth
+    await admin.auth().deleteUser(uid);
+
+    // Eliminar documento de Firestore
+    await admin.firestore().doc(`usuarios/${uid}`).delete();
+
+    return { success: true, message: 'Usuario eliminado correctamente' };
+  } catch (error) {
+    console.error('Error deleting user:', error);
+    throw new HttpsError('internal', 'Error al eliminar el usuario');
   }
 });

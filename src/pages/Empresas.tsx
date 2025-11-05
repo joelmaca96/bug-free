@@ -9,6 +9,10 @@ import {
   TextField,
   Snackbar,
   Alert,
+  MenuItem,
+  Select,
+  FormControl,
+  InputLabel,
 } from '@mui/material';
 import { DataGrid, GridColDef, GridActionsCellItem } from '@mui/x-data-grid';
 import AddIcon from '@mui/icons-material/Add';
@@ -20,10 +24,12 @@ import {
   updateEmpresa,
   deleteEmpresa,
 } from '@/services/empresasService';
-import { Empresa } from '@/types';
+import { getAdminsDisponibles, getUsuariosByRol, updateUsuario } from '@/services/usuariosService';
+import { Empresa, Usuario } from '@/types';
 
 const Empresas: React.FC = () => {
   const [empresas, setEmpresas] = useState<Empresa[]>([]);
+  const [admins, setAdmins] = useState<Usuario[]>([]);
   const [loading, setLoading] = useState(true);
   const [openDialog, setOpenDialog] = useState(false);
   const [editingEmpresa, setEditingEmpresa] = useState<Empresa | null>(null);
@@ -34,19 +40,24 @@ const Empresas: React.FC = () => {
     nombre: '',
     direccion: '',
     contacto: '',
+    adminId: '',
   });
 
   useEffect(() => {
-    loadEmpresas();
+    loadData();
   }, []);
 
-  const loadEmpresas = async () => {
+  const loadData = async () => {
     try {
       setLoading(true);
-      const data = await getEmpresas();
-      setEmpresas(data);
+      const [empresasData, adminsData] = await Promise.all([
+        getEmpresas(),
+        getUsuariosByRol('admin'),
+      ]);
+      setEmpresas(empresasData);
+      setAdmins(adminsData);
     } catch (error) {
-      showSnackbar('Error al cargar empresas', 'error');
+      showSnackbar('Error al cargar datos', 'error');
     } finally {
       setLoading(false);
     }
@@ -64,6 +75,7 @@ const Empresas: React.FC = () => {
         nombre: empresa.nombre,
         direccion: empresa.direccion,
         contacto: empresa.contacto,
+        adminId: empresa.adminId,
       });
     } else {
       setEditingEmpresa(null);
@@ -72,6 +84,7 @@ const Empresas: React.FC = () => {
         nombre: '',
         direccion: '',
         contacto: '',
+        adminId: '',
       });
     }
     setOpenDialog(true);
@@ -85,35 +98,66 @@ const Empresas: React.FC = () => {
       nombre: '',
       direccion: '',
       contacto: '',
+      adminId: '',
     });
   };
 
   const handleSave = async () => {
     try {
+      if (!formData.adminId) {
+        showSnackbar('Debe seleccionar un administrador para la empresa', 'error');
+        return;
+      }
+
+      const previousAdminId = editingEmpresa?.adminId;
+
       if (editingEmpresa) {
         await updateEmpresa(editingEmpresa.id, formData);
+
+        // Si cambió el admin, actualizar ambos usuarios
+        if (previousAdminId !== formData.adminId) {
+          // Desasignar el admin anterior
+          if (previousAdminId) {
+            await updateUsuario(previousAdminId, { empresaId: '' });
+          }
+          // Asignar el nuevo admin
+          await updateUsuario(formData.adminId, { empresaId: editingEmpresa.id });
+        }
+
         showSnackbar('Empresa actualizada correctamente', 'success');
       } else {
-        await createEmpresa(formData);
+        const empresaId = await createEmpresa(formData);
+        // Asignar el admin a la empresa
+        await updateUsuario(formData.adminId, { empresaId });
         showSnackbar('Empresa creada correctamente', 'success');
       }
       handleCloseDialog();
-      loadEmpresas();
-    } catch (error) {
-      showSnackbar('Error al guardar empresa', 'error');
+      loadData();
+    } catch (error: any) {
+      showSnackbar(error.message || 'Error al guardar empresa', 'error');
     }
   };
 
   const handleDelete = async (id: string) => {
     if (window.confirm('¿Está seguro de eliminar esta empresa?')) {
       try {
+        const empresa = empresas.find(e => e.id === id);
+        // Desasignar el admin antes de eliminar
+        if (empresa?.adminId) {
+          await updateUsuario(empresa.adminId, { empresaId: '' });
+        }
         await deleteEmpresa(id);
         showSnackbar('Empresa eliminada correctamente', 'success');
-        loadEmpresas();
+        loadData();
       } catch (error) {
         showSnackbar('Error al eliminar empresa', 'error');
       }
     }
+  };
+
+  const getAdminName = (adminId: string) => {
+    const admin = admins.find(a => a.uid === adminId);
+    return admin ? `${admin.datosPersonales.nombre} ${admin.datosPersonales.apellidos}` : 'Sin asignar';
   };
 
   const columns: GridColDef[] = [
@@ -121,6 +165,12 @@ const Empresas: React.FC = () => {
     { field: 'nombre', headerName: 'Nombre', width: 250, flex: 1 },
     { field: 'direccion', headerName: 'Dirección', width: 300, flex: 1 },
     { field: 'contacto', headerName: 'Contacto', width: 200 },
+    {
+      field: 'adminId',
+      headerName: 'Administrador',
+      width: 200,
+      valueGetter: (params) => getAdminName(params.row.adminId),
+    },
     {
       field: 'actions',
       type: 'actions',
@@ -202,6 +252,22 @@ const Empresas: React.FC = () => {
             onChange={(e) => setFormData({ ...formData, contacto: e.target.value })}
             required
           />
+          <FormControl fullWidth margin="dense" required>
+            <InputLabel>Administrador</InputLabel>
+            <Select
+              value={formData.adminId}
+              onChange={(e) => setFormData({ ...formData, adminId: e.target.value })}
+              label="Administrador"
+            >
+              {admins
+                .filter(admin => !admin.empresaId || admin.uid === editingEmpresa?.adminId)
+                .map((admin) => (
+                  <MenuItem key={admin.uid} value={admin.uid}>
+                    {admin.datosPersonales.nombre} {admin.datosPersonales.apellidos} - {admin.datosPersonales.email}
+                  </MenuItem>
+                ))}
+            </Select>
+          </FormControl>
         </DialogContent>
         <DialogActions>
           <Button onClick={handleCloseDialog}>Cancelar</Button>

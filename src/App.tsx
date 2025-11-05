@@ -12,6 +12,7 @@ import Login from './pages/Login';
 import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
 import Empresas from './pages/Empresas';
+import MiEmpresa from './pages/MiEmpresa';
 import Farmacias from './pages/Farmacias';
 import Empleados from './pages/Empleados';
 import ConfiguracionFarmacia from './pages/ConfiguracionFarmacia';
@@ -42,11 +43,11 @@ const App: React.FC = () => {
               }
             />
 
-            {/* Rutas solo para admin */}
+            {/* Rutas solo para superuser */}
             <Route
               path="/empresas"
               element={
-                <ProtectedRoute allowedRoles={['admin']}>
+                <ProtectedRoute allowedRoles={['superuser']}>
                   <Layout>
                     <Empresas />
                   </Layout>
@@ -54,10 +55,23 @@ const App: React.FC = () => {
               }
             />
 
+            {/* Ruta solo para admin */}
+            <Route
+              path="/mi-empresa"
+              element={
+                <ProtectedRoute allowedRoles={['admin']}>
+                  <Layout>
+                    <MiEmpresa />
+                  </Layout>
+                </ProtectedRoute>
+              }
+            />
+
+            {/* Rutas para admin y superuser */}
             <Route
               path="/farmacias"
               element={
-                <ProtectedRoute allowedRoles={['admin']}>
+                <ProtectedRoute allowedRoles={['admin', 'superuser']}>
                   <Layout>
                     <Farmacias />
                   </Layout>
@@ -65,11 +79,11 @@ const App: React.FC = () => {
               }
             />
 
-            {/* Rutas para gestor y admin */}
+            {/* Rutas para gestor, admin y superuser */}
             <Route
               path="/empleados"
               element={
-                <ProtectedRoute allowedRoles={['gestor', 'admin']}>
+                <ProtectedRoute allowedRoles={['gestor', 'admin', 'superuser']}>
                   <Layout>
                     <Empleados />
                   </Layout>
@@ -80,7 +94,7 @@ const App: React.FC = () => {
             <Route
               path="/configuracion"
               element={
-                <ProtectedRoute allowedRoles={['gestor', 'admin']}>
+                <ProtectedRoute allowedRoles={['gestor', 'admin', 'superuser']}>
                   <Layout>
                     <ConfiguracionFarmacia />
                   </Layout>
@@ -91,7 +105,7 @@ const App: React.FC = () => {
             <Route
               path="/algoritmo"
               element={
-                <ProtectedRoute allowedRoles={['gestor', 'admin']}>
+                <ProtectedRoute allowedRoles={['gestor', 'admin', 'superuser']}>
                   <Layout>
                     <ConfiguracionAlgoritmo />
                   </Layout>
@@ -102,7 +116,7 @@ const App: React.FC = () => {
             <Route
               path="/calendario"
               element={
-                <ProtectedRoute allowedRoles={['gestor', 'admin']}>
+                <ProtectedRoute allowedRoles={['gestor', 'admin', 'superuser']}>
                   <Layout>
                     <Calendario />
                   </Layout>
@@ -113,7 +127,7 @@ const App: React.FC = () => {
             <Route
               path="/reportes"
               element={
-                <ProtectedRoute allowedRoles={['gestor', 'admin']}>
+                <ProtectedRoute allowedRoles={['gestor', 'admin', 'superuser']}>
                   <Layout>
                     <Reportes />
                   </Layout>

@@ -22,11 +22,15 @@ import {
   deleteFarmacia,
 } from '@/services/farmaciasService';
 import { getEmpresas } from '@/services/empresasService';
-import { Farmacia, Empresa } from '@/types';
+import { getUsuariosByRol, getUsuariosByEmpresa, updateUsuario } from '@/services/usuariosService';
+import { Farmacia, Empresa, Usuario } from '@/types';
+import { useAuth } from '@/contexts/AuthContext';
 
 const Farmacias: React.FC = () => {
+  const { user } = useAuth();
   const [farmacias, setFarmacias] = useState<Farmacia[]>([]);
   const [empresas, setEmpresas] = useState<Empresa[]>([]);
+  const [gestores, setGestores] = useState<Usuario[]>([]);
   const [loading, setLoading] = useState(true);
   const [openDialog, setOpenDialog] = useState(false);
   const [editingFarmacia, setEditingFarmacia] = useState<Farmacia | null>(null);
@@ -37,6 +41,7 @@ const Farmacias: React.FC = () => {
     cif: '',
     nombre: '',
     direccion: '',
+    gestorId: '',
   });
 
   useEffect(() => {
@@ -46,12 +51,14 @@ const Farmacias: React.FC = () => {
   const loadData = async () => {
     try {
       setLoading(true);
-      const [farmaciasData, empresasData] = await Promise.all([
+      const [farmaciasData, empresasData, gestoresData] = await Promise.all([
         getFarmacias(),
         getEmpresas(),
+        getUsuariosByRol('gestor'),
       ]);
       setFarmacias(farmaciasData);
       setEmpresas(empresasData);
+      setGestores(gestoresData);
     } catch (error) {
       showSnackbar('Error al cargar datos', 'error');
     } finally {
@@ -71,14 +78,16 @@ const Farmacias: React.FC = () => {
         cif: farmacia.cif,
         nombre: farmacia.nombre,
         direccion: farmacia.direccion,
+        gestorId: farmacia.gestorId || '',
       });
     } else {
       setEditingFarmacia(null);
       setFormData({
-        empresaId: '',
+        empresaId: user?.empresaId || '',
         cif: '',
         nombre: '',
         direccion: '',
+        gestorId: '',
       });
     }
     setOpenDialog(true);
@@ -92,16 +101,35 @@ const Farmacias: React.FC = () => {
       cif: '',
       nombre: '',
       direccion: '',
+      gestorId: '',
     });
   };
 
   const handleSave = async () => {
     try {
+      const previousGestorId = editingFarmacia?.gestorId;
+
       if (editingFarmacia) {
         await updateFarmacia(editingFarmacia.id, formData);
+
+        // Si cambió el gestor, actualizar ambos usuarios
+        if (previousGestorId !== formData.gestorId) {
+          // Desasignar el gestor anterior
+          if (previousGestorId) {
+            await updateUsuario(previousGestorId, { farmaciaId: '' });
+          }
+          // Asignar el nuevo gestor
+          if (formData.gestorId) {
+            await updateUsuario(formData.gestorId, {
+              farmaciaId: editingFarmacia.id,
+              empresaId: formData.empresaId
+            });
+          }
+        }
+
         showSnackbar('Farmacia actualizada correctamente', 'success');
       } else {
-        await createFarmacia({
+        const farmaciaId = await createFarmacia({
           ...formData,
           configuracion: {
             horariosHabituales: [],
@@ -110,6 +138,15 @@ const Farmacias: React.FC = () => {
             trabajadoresMinimos: 1,
           },
         });
+
+        // Asignar el gestor a la farmacia si se seleccionó uno
+        if (formData.gestorId) {
+          await updateUsuario(formData.gestorId, {
+            farmaciaId: farmaciaId,
+            empresaId: formData.empresaId
+          });
+        }
+
         showSnackbar('Farmacia creada correctamente', 'success');
       }
       handleCloseDialog();
@@ -122,6 +159,11 @@ const Farmacias: React.FC = () => {
   const handleDelete = async (id: string) => {
     if (window.confirm('¿Está seguro de eliminar esta farmacia?')) {
       try {
+        const farmacia = farmacias.find(f => f.id === id);
+        // Desasignar el gestor antes de eliminar
+        if (farmacia?.gestorId) {
+          await updateUsuario(farmacia.gestorId, { farmaciaId: '' });
+        }
         await deleteFarmacia(id);
         showSnackbar('Farmacia eliminada correctamente', 'success');
         loadData();
@@ -136,6 +178,12 @@ const Farmacias: React.FC = () => {
     return empresa ? empresa.nombre : '-';
   };
 
+  const getGestorNombre = (gestorId?: string) => {
+    if (!gestorId) return 'Sin asignar';
+    const gestor = gestores.find((g) => g.uid === gestorId);
+    return gestor ? `${gestor.datosPersonales.nombre} ${gestor.datosPersonales.apellidos}` : 'Sin asignar';
+  };
+
   const columns: GridColDef[] = [
     { field: 'cif', headerName: 'CIF', width: 130 },
     { field: 'nombre', headerName: 'Nombre', width: 250, flex: 1 },
@@ -144,6 +192,12 @@ const Farmacias: React.FC = () => {
       headerName: 'Empresa',
       width: 200,
       renderCell: (params) => getEmpresaNombre(params.value),
+    },
+    {
+      field: 'gestorId',
+      headerName: 'Gestor',
+      width: 200,
+      renderCell: (params) => getGestorNombre(params.row.gestorId),
     },
     { field: 'direccion', headerName: 'Dirección', width: 300, flex: 1 },
     {
@@ -202,6 +256,7 @@ const Farmacias: React.FC = () => {
             value={formData.empresaId}
             onChange={(e) => setFormData({ ...formData, empresaId: e.target.value })}
             required
+            disabled={user?.rol === 'admin'}
           >
             {empresas.map((empresa) => (
               <MenuItem key={empresa.id} value={empresa.id}>
@@ -233,6 +288,26 @@ const Farmacias: React.FC = () => {
             onChange={(e) => setFormData({ ...formData, direccion: e.target.value })}
             required
           />
+          <TextField
+            select
+            margin="dense"
+            label="Gestor (Opcional)"
+            fullWidth
+            value={formData.gestorId}
+            onChange={(e) => setFormData({ ...formData, gestorId: e.target.value })}
+          >
+            <MenuItem value="">Sin asignar</MenuItem>
+            {gestores
+              .filter(gestor =>
+                (!gestor.farmaciaId || gestor.uid === editingFarmacia?.gestorId) &&
+                (!formData.empresaId || gestor.empresaId === formData.empresaId || !gestor.empresaId)
+              )
+              .map((gestor) => (
+                <MenuItem key={gestor.uid} value={gestor.uid}>
+                  {gestor.datosPersonales.nombre} {gestor.datosPersonales.apellidos} - {gestor.datosPersonales.email}
+                </MenuItem>
+              ))}
+          </TextField>
         </DialogContent>
         <DialogActions>
           <Button onClick={handleCloseDialog}>Cancelar</Button>

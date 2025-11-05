@@ -24,6 +24,7 @@ export interface Usuario {
   farmaciaId: string;
   empresaId: string;
   restricciones: RestriccionesHorarias;
+  incluirEnCalendario?: boolean; // Solo para admin y gestor - indica si debe aparecer en el calendario
   createdAt?: Date;
   updatedAt?: Date;
 }
@@ -35,6 +36,7 @@ export interface Empresa {
   nombre: string;
   direccion: string;
   contacto: string;
+  adminId: string; // UID del usuario admin asignado a esta empresa
   createdAt?: Date;
   updatedAt?: Date;
 }
@@ -67,6 +69,7 @@ export interface Farmacia {
   cif: string;
   nombre: string;
   direccion: string;
+  gestorId?: string; // UID del usuario gestor asignado a esta farmacia (opcional)
   configuracion: ConfiguracionFarmacia;
   createdAt?: Date;
   updatedAt?: Date;

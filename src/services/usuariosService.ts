@@ -10,7 +10,8 @@ import {
   serverTimestamp,
   Timestamp,
 } from 'firebase/firestore';
-import { db } from './firebase';
+import { httpsCallable } from 'firebase/functions';
+import { db, functions } from './firebase';
 import { Usuario } from '@/types';
 
 const COLLECTION_NAME = 'usuarios';
@@ -51,14 +52,21 @@ export const getUsuariosByFarmacia = async (farmaciaId: string): Promise<Usuario
   }
 };
 
-// Obtener usuarios por empresa
-export const getUsuariosByEmpresa = async (empresaId: string): Promise<Usuario[]> => {
+// Obtener usuarios por empresa (excluyendo superusers)
+export const getUsuariosByEmpresa = async (empresaId: string, excludeSuperusers = false): Promise<Usuario[]> => {
   try {
     const q = query(collection(db, COLLECTION_NAME), where('empresaId', '==', empresaId));
     const querySnapshot = await getDocs(q);
-    return querySnapshot.docs.map((doc) =>
+    let usuarios = querySnapshot.docs.map((doc) =>
       convertTimestamps({ uid: doc.id, ...doc.data() })
     );
+
+    // Filtrar superusers si se solicita
+    if (excludeSuperusers) {
+      usuarios = usuarios.filter(u => u.rol !== 'superuser');
+    }
+
+    return usuarios;
   } catch (error) {
     console.error('Error getting usuarios by empresa:', error);
     throw error;
@@ -150,6 +158,17 @@ export const deleteUsuario = async (uid: string): Promise<void> => {
   }
 };
 
+// Eliminar usuario incluyendo credenciales de Firebase Auth
+export const deleteUsuarioComplete = async (uid: string): Promise<void> => {
+  try {
+    const deleteUserAuth = httpsCallable(functions, 'deleteUserAuth');
+    await deleteUserAuth({ uid });
+  } catch (error) {
+    console.error('Error deleting usuario completely:', error);
+    throw error;
+  }
+};
+
 // Buscar usuario por NIF
 export const getUsuarioByNif = async (nif: string): Promise<Usuario | null> => {
   try {
@@ -182,6 +201,23 @@ export const getUsuarioByEmail = async (email: string): Promise<Usuario | null> 
     return null;
   } catch (error) {
     console.error('Error getting usuario by email:', error);
+    throw error;
+  }
+};
+
+// Obtener usuarios disponibles para ser asignados como admin (usuarios con rol admin sin empresa asignada)
+export const getAdminsDisponibles = async (): Promise<Usuario[]> => {
+  try {
+    const q = query(collection(db, COLLECTION_NAME), where('rol', '==', 'admin'));
+    const querySnapshot = await getDocs(q);
+    const admins = querySnapshot.docs.map((doc) =>
+      convertTimestamps({ uid: doc.id, ...doc.data() })
+    );
+
+    // Filtrar solo los que no tienen empresaId o tienen un empresaId vacío
+    return admins.filter(admin => !admin.empresaId || admin.empresaId === '');
+  } catch (error) {
+    console.error('Error getting admins disponibles:', error);
     throw error;
   }
 };

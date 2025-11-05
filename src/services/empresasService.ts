@@ -10,9 +10,11 @@ import {
   where,
   serverTimestamp,
   Timestamp,
+  writeBatch,
 } from 'firebase/firestore';
 import { db } from './firebase';
 import { Empresa } from '@/types';
+import { deleteUsuarioComplete } from './usuariosService';
 
 const COLLECTION_NAME = 'empresas';
 
@@ -60,6 +62,12 @@ export const createEmpresa = async (
   empresa: Omit<Empresa, 'id' | 'createdAt' | 'updatedAt'>
 ): Promise<string> => {
   try {
+    // Verificar que el adminId no esté ya asignado a otra empresa
+    const existingEmpresa = await getEmpresaByAdminId(empresa.adminId);
+    if (existingEmpresa) {
+      throw new Error('El usuario admin ya está asignado a otra empresa');
+    }
+
     const docRef = await addDoc(collection(db, COLLECTION_NAME), {
       ...empresa,
       createdAt: serverTimestamp(),
@@ -79,6 +87,14 @@ export const updateEmpresa = async (
   empresa: Partial<Omit<Empresa, 'id' | 'createdAt' | 'updatedAt'>>
 ): Promise<void> => {
   try {
+    // Si se está actualizando el adminId, verificar que no esté asignado a otra empresa
+    if (empresa.adminId) {
+      const existingEmpresa = await getEmpresaByAdminId(empresa.adminId);
+      if (existingEmpresa && existingEmpresa.id !== id) {
+        throw new Error('El usuario admin ya está asignado a otra empresa');
+      }
+    }
+
     const docRef = doc(db, COLLECTION_NAME, id);
     await updateDoc(docRef, {
       ...empresa,
@@ -115,6 +131,104 @@ export const getEmpresaByCif = async (cif: string): Promise<Empresa | null> => {
     return null;
   } catch (error) {
     console.error('Error getting empresa by CIF:', error);
+    throw error;
+  }
+};
+
+// Buscar empresa por adminId
+export const getEmpresaByAdminId = async (adminId: string): Promise<Empresa | null> => {
+  try {
+    const q = query(collection(db, COLLECTION_NAME), where('adminId', '==', adminId));
+    const querySnapshot = await getDocs(q);
+
+    if (!querySnapshot.empty) {
+      const doc = querySnapshot.docs[0];
+      return convertTimestamps({ id: doc.id, ...doc.data() });
+    }
+
+    return null;
+  } catch (error) {
+    console.error('Error getting empresa by adminId:', error);
+    throw error;
+  }
+};
+
+// Eliminar empresa en cascada (con opción de eliminar farmacias y usuarios)
+export const deleteEmpresaCascade = async (
+  empresaId: string,
+  deleteFarmacias: boolean = false,
+  deleteUsers: boolean = false
+): Promise<void> => {
+  try {
+    // Obtener farmacias de la empresa
+    const farmaciasQuery = query(
+      collection(db, 'farmacias'),
+      where('empresaId', '==', empresaId)
+    );
+    const farmaciasSnapshot = await getDocs(farmaciasQuery);
+
+    if (deleteFarmacias) {
+      // Eliminar cada farmacia
+      for (const farmaciaDoc of farmaciasSnapshot.docs) {
+        const farmaciaId = farmaciaDoc.id;
+
+        if (deleteUsers) {
+          // Obtener usuarios de la farmacia
+          const usuariosQuery = query(
+            collection(db, 'usuarios'),
+            where('farmaciaId', '==', farmaciaId)
+          );
+          const usuariosSnapshot = await getDocs(usuariosQuery);
+
+          // Eliminar usuarios incluyendo Auth
+          for (const usuarioDoc of usuariosSnapshot.docs) {
+            await deleteUsuarioComplete(usuarioDoc.id);
+          }
+        }
+
+        // Eliminar la farmacia
+        await deleteDoc(doc(db, 'farmacias', farmaciaId));
+      }
+    } else {
+      // Si no se eliminan farmacias, desasignar empresaId de las farmacias
+      for (const farmaciaDoc of farmaciasSnapshot.docs) {
+        await updateDoc(doc(db, 'farmacias', farmaciaDoc.id), {
+          empresaId: '',
+        });
+      }
+    }
+
+    if (deleteUsers) {
+      // Obtener usuarios de la empresa
+      const usuariosQuery = query(
+        collection(db, 'usuarios'),
+        where('empresaId', '==', empresaId)
+      );
+      const usuariosSnapshot = await getDocs(usuariosQuery);
+
+      // Eliminar usuarios incluyendo Auth
+      for (const usuarioDoc of usuariosSnapshot.docs) {
+        await deleteUsuarioComplete(usuarioDoc.id);
+      }
+    } else {
+      // Desasignar empresaId de los usuarios
+      const usuariosQuery = query(
+        collection(db, 'usuarios'),
+        where('empresaId', '==', empresaId)
+      );
+      const usuariosSnapshot = await getDocs(usuariosQuery);
+
+      for (const usuarioDoc of usuariosSnapshot.docs) {
+        await updateDoc(doc(db, 'usuarios', usuarioDoc.id), {
+          empresaId: '',
+        });
+      }
+    }
+
+    // Eliminar la empresa
+    await deleteDoc(doc(db, COLLECTION_NAME, empresaId));
+  } catch (error) {
+    console.error('Error deleting empresa cascade:', error);
     throw error;
   }
 };
