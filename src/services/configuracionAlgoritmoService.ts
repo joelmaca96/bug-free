@@ -59,8 +59,13 @@ export const getConfiguracionByUserId = async (
   userId: string
 ): Promise<ConfiguracionAlgoritmo | null> => {
   try {
-    const docRef = doc(db, COLLECTION_NAME, userId);
-    const docSnap = await getDoc(docRef);
+    // Validar que farmaciaId no sea vacío
+    if (!farmaciaId || farmaciaId.trim() === '') {
+      throw new Error('farmaciaId no puede estar vacío');
+    }
+
+    const q = query(collection(db, COLLECTION_NAME), where('farmaciaId', '==', farmaciaId));
+    const querySnapshot = await getDocs(q);
 
     if (docSnap.exists()) {
       return convertTimestamps({ id: docSnap.id, ...docSnap.data() });
@@ -80,7 +85,12 @@ export const getOrCreateConfiguracion = async (
   farmaciaId: string
 ): Promise<ConfiguracionAlgoritmo> => {
   try {
-    let config = await getConfiguracionByUserId(userId);
+    // Validar que farmaciaId no sea vacío, undefined o null
+    if (!farmaciaId || farmaciaId.trim() === '') {
+      throw new Error('farmaciaId no puede estar vacío. El usuario debe tener una farmacia asignada.');
+    }
+
+    let config = await getConfiguracionByFarmacia(farmaciaId);
 
     if (!config) {
       // Obtener empresaId de la farmacia
@@ -137,5 +147,38 @@ export const updateConfiguracion = async (
   }
 };
 
-// NOTA: Esta función ha sido eliminada porque solo se permite una configuración por usuario.
-// Para actualizar la configuración, usa updateConfiguracion() en su lugar.
+// Crear nueva versión de configuración
+export const createConfiguracionVersion = async (
+  farmaciaId: string,
+  configuracion: Partial<Omit<ConfiguracionAlgoritmo, 'id' | 'farmaciaId' | 'version' | 'fechaModificacion'>>
+): Promise<ConfiguracionAlgoritmo> => {
+  try {
+    // Validar que farmaciaId no sea vacío
+    if (!farmaciaId || farmaciaId.trim() === '') {
+      throw new Error('farmaciaId no puede estar vacío');
+    }
+
+    const currentConfig = await getOrCreateConfiguracion(farmaciaId);
+
+    const newConfig = {
+      farmaciaId,
+      prioridades: configuracion.prioridades || currentConfig.prioridades,
+      restricciones: configuracion.restricciones || currentConfig.restricciones,
+      parametrosOptimizacion: configuracion.parametrosOptimizacion || currentConfig.parametrosOptimizacion,
+      version: currentConfig.version + 1,
+      fechaModificacion: serverTimestamp(),
+    };
+
+    const docRef = doc(collection(db, COLLECTION_NAME));
+    await setDoc(docRef, newConfig);
+
+    return {
+      id: docRef.id,
+      ...newConfig,
+      fechaModificacion: new Date(),
+    };
+  } catch (error) {
+    console.error('Error creating configuracion version:', error);
+    throw error;
+  }
+};

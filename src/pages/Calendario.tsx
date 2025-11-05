@@ -77,7 +77,11 @@ const CalendarioPage: React.FC = () => {
   }, [user]);
 
   const loadData = async () => {
-    if (!user?.farmaciaId) return;
+    if (!user?.farmaciaId || user.farmaciaId.trim() === '') {
+      setError('No se ha asignado una farmacia a este usuario. Por favor, contacte con el administrador.');
+      setLoading(false);
+      return;
+    }
 
     try {
       setLoading(true);
@@ -102,7 +106,7 @@ const CalendarioPage: React.FC = () => {
   };
 
   const loadTurnosForMonth = async (date: Date) => {
-    if (!user?.farmaciaId) return;
+    if (!user?.farmaciaId || user.farmaciaId.trim() === '') return;
 
     try {
       const inicio = format(startOfMonth(date), 'yyyy-MM-dd');
@@ -116,7 +120,10 @@ const CalendarioPage: React.FC = () => {
   };
 
   const handleGenerateSchedule = async () => {
-    if (!user?.farmaciaId || !farmacia) return;
+    if (!user?.farmaciaId || user.farmaciaId.trim() === '' || !farmacia) {
+      setError('Error: No se ha asignado una farmacia a este usuario. Por favor, contacte con el administrador.');
+      return;
+    }
 
     try {
       setGenerating(true);
@@ -212,7 +219,7 @@ const CalendarioPage: React.FC = () => {
   };
 
   const handleEventDrop = async (dropInfo: EventDropArg) => {
-    if (!user?.farmaciaId) return;
+    if (!user?.farmaciaId || user.farmaciaId.trim() === '') return;
 
     const turno = turnos.find(t => t.id === dropInfo.event.id);
     if (!turno) return;
@@ -250,7 +257,7 @@ const CalendarioPage: React.FC = () => {
   };
 
   const handleSaveTurno = async () => {
-    if (!user?.farmaciaId || !selectedTurno) return;
+    if (!user?.farmaciaId || user.farmaciaId.trim() === '' || !selectedTurno) return;
 
     try {
       if (selectedTurno.id) {
@@ -289,7 +296,7 @@ const CalendarioPage: React.FC = () => {
   };
 
   const handleDeleteTurno = async () => {
-    if (!user?.farmaciaId || !selectedTurno?.id) return;
+    if (!user?.farmaciaId || user.farmaciaId.trim() === '' || !selectedTurno?.id) return;
 
     try {
       await deleteTurno(user.farmaciaId, selectedTurno.id);
