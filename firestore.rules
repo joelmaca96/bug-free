@@ -127,17 +127,19 @@ service cloud.firestore {
         (isGestor() && isSameFarmacia(farmaciaId))
       );
 
-      // SuperUser y Admin pueden crear farmacias
-      allow create: if isSuperuser() || isAdmin();
+      // SuperUser puede crear cualquier farmacia
+      // Admin puede crear farmacias SOLO para su empresa
+      allow create: if isSuperuser() ||
+        (isAdmin() && isSameEmpresa(request.resource.data.empresaId));
 
       // SuperUser puede actualizar cualquier farmacia
       // Admin puede actualizar farmacias de su empresa
       // Gestor puede actualizar su farmacia asignada
       allow update: if isSuperuser() ||
-        (isAdmin() && isSameEmpresa(resource.data.empresaId)) ||
+        (isAdmin() && isSameEmpresa(resource.data.empresaId) && isSameEmpresa(request.resource.data.empresaId)) ||
         (isGestor() && isSameFarmacia(farmaciaId));
 
-      // SuperUser y Admin pueden eliminar farmacias
+      // SuperUser y Admin pueden eliminar farmacias de su empresa
       allow delete: if isSuperuser() || (isAdmin() && isSameEmpresa(resource.data.empresaId));
     }
 
@@ -169,26 +171,30 @@ service cloud.firestore {
     }
 
     // Reglas para configuración del algoritmo
-    match /configuracionesAlgoritmo/{farmaciaId} {
+    match /configuracionesAlgoritmo/{configId} {
       // SuperUser puede leer todas las configuraciones
       // Admin puede leer configuraciones de farmacias de su empresa
       // Gestor puede leer configuración de su farmacia
       allow read: if isAuthenticated() && (
         isSuperuser() ||
-        (isAdmin() && farmaciaInUserEmpresa(farmaciaId)) ||
-        isSameFarmacia(farmaciaId)
+        (isAdmin() && isSameEmpresa(resource.data.empresaId)) ||
+        isSameFarmacia(resource.data.farmaciaId)
       );
 
       // SuperUser puede crear/modificar cualquier configuración
       // Admin puede crear/modificar configuraciones de farmacias de su empresa
       // Gestor puede crear/modificar configuración de su farmacia
-      allow create, update: if isSuperuser() ||
-        (isAdmin() && farmaciaInUserEmpresa(farmaciaId)) ||
-        (isGestor() && isSameFarmacia(farmaciaId));
+      allow create: if isSuperuser() ||
+        (isAdmin() && isSameEmpresa(request.resource.data.empresaId)) ||
+        (isGestor() && isSameFarmacia(request.resource.data.farmaciaId));
+
+      allow update: if isSuperuser() ||
+        (isAdmin() && isSameEmpresa(resource.data.empresaId) && isSameEmpresa(request.resource.data.empresaId)) ||
+        (isGestor() && isSameFarmacia(resource.data.farmaciaId));
 
       // SuperUser puede eliminar cualquier configuración
       // Admin puede eliminar configuraciones de farmacias de su empresa
-      allow delete: if isSuperuser() || (isAdmin() && farmaciaInUserEmpresa(farmaciaId));
+      allow delete: if isSuperuser() || (isAdmin() && isSameEmpresa(resource.data.empresaId));
     }
 
     // Denegar acceso a cualquier otra colección no especificada

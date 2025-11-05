@@ -17,11 +17,12 @@ import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import {
   getFarmacias,
+  getFarmaciasByEmpresa,
   createFarmacia,
   updateFarmacia,
   deleteFarmacia,
 } from '@/services/farmaciasService';
-import { getEmpresas } from '@/services/empresasService';
+import { getEmpresas, getEmpresaById } from '@/services/empresasService';
 import { getUsuariosByRol, getUsuariosByEmpresa, updateUsuario } from '@/services/usuariosService';
 import { Farmacia, Empresa, Usuario } from '@/types';
 import { useAuth } from '@/contexts/AuthContext';
@@ -51,15 +52,30 @@ const Farmacias: React.FC = () => {
   const loadData = async () => {
     try {
       setLoading(true);
-      const [farmaciasData, empresasData, gestoresData] = await Promise.all([
-        getFarmacias(),
-        getEmpresas(),
-        getUsuariosByRol('gestor'),
-      ]);
-      setFarmacias(farmaciasData);
-      setEmpresas(empresasData);
-      setGestores(gestoresData);
+
+      // Si es admin, cargar solo sus farmacias y su empresa
+      if (user?.rol === 'admin' && user?.empresaId) {
+        const [farmaciasData, empresaData, gestoresData] = await Promise.all([
+          getFarmaciasByEmpresa(user.empresaId),
+          getEmpresaById(user.empresaId),
+          getUsuariosByEmpresa(user.empresaId),
+        ]);
+        setFarmacias(farmaciasData);
+        setEmpresas(empresaData ? [empresaData] : []);
+        setGestores(gestoresData.filter(u => u.rol === 'gestor'));
+      } else if (user?.rol === 'superuser') {
+        // Si es superuser, cargar todo
+        const [farmaciasData, empresasData, gestoresData] = await Promise.all([
+          getFarmacias(),
+          getEmpresas(),
+          getUsuariosByRol('gestor'),
+        ]);
+        setFarmacias(farmaciasData);
+        setEmpresas(empresasData);
+        setGestores(gestoresData);
+      }
     } catch (error) {
+      console.error('Error al cargar datos:', error);
       showSnackbar('Error al cargar datos', 'error');
     } finally {
       setLoading(false);

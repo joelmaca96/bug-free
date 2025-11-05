@@ -33,8 +33,8 @@ import {
   deleteUsuario,
   deleteUsuarioComplete,
 } from '@/services/usuariosService';
-import { getFarmacias } from '@/services/farmaciasService';
-import { getEmpresas } from '@/services/empresasService';
+import { getFarmacias, getFarmaciasByEmpresa } from '@/services/farmaciasService';
+import { getEmpresas, getEmpresaById } from '@/services/empresasService';
 import { Usuario, Farmacia, Empresa, UserRole } from '@/types';
 import { useAuth } from '@/contexts/AuthContext';
 import {
@@ -110,10 +110,24 @@ const Empleados: React.FC = () => {
   const loadData = async () => {
     try {
       setLoading(true);
-      const [empresasData, farmaciasData] = await Promise.all([
-        getEmpresas(),
-        getFarmacias(),
-      ]);
+
+      let empresasData: Empresa[] = [];
+      let farmaciasData: Farmacia[] = [];
+
+      // Cargar empresas y farmacias según el rol
+      if (user?.rol === 'superuser') {
+        [empresasData, farmaciasData] = await Promise.all([
+          getEmpresas(),
+          getFarmacias(),
+        ]);
+      } else if (user?.rol === 'admin' && user.empresaId) {
+        const [empresaData, farmaciasDataByEmpresa] = await Promise.all([
+          getEmpresaById(user.empresaId),
+          getFarmaciasByEmpresa(user.empresaId),
+        ]);
+        empresasData = empresaData ? [empresaData] : [];
+        farmaciasData = farmaciasDataByEmpresa;
+      }
 
       setEmpresas(empresasData);
       setFarmacias(farmaciasData);
