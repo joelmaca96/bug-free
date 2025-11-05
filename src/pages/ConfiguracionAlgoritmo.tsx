@@ -11,7 +11,6 @@ import {
   MenuItem,
   Button,
   Slider,
-  Divider,
   Alert,
   CircularProgress,
   Card,
@@ -19,7 +18,6 @@ import {
 } from '@mui/material';
 import SaveIcon from '@mui/icons-material/Save';
 import RestoreIcon from '@mui/icons-material/Restore';
-import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import { useAuth } from '@/contexts/AuthContext';
 import { ConfiguracionAlgoritmo, EstrategiaOptimizacion } from '@/types';
 import {
@@ -56,21 +54,31 @@ const ConfiguracionAlgoritmoPage: React.FC = () => {
   };
 
   const handleSave = async () => {
-    if (!config) return;
+    if (!config || !user?.farmaciaId) return;
 
     try {
       setSaving(true);
       setError(null);
+
+      console.log('Guardando configuración:', {
+        id: config.id,
+        farmaciaId: user.farmaciaId,
+        config
+      });
+
       await updateConfiguracion(config.id, {
         prioridades: config.prioridades,
         restricciones: config.restricciones,
         parametrosOptimizacion: config.parametrosOptimizacion,
       });
-      setSuccess('Configuración guardada correctamente');
+
+      console.log('Configuración guardada exitosamente');
+      setSuccess('Configuración guardada correctamente en la base de datos');
       setTimeout(() => setSuccess(null), 3000);
-    } catch (err) {
-      setError('Error al guardar la configuración');
-      console.error(err);
+    } catch (err: any) {
+      const errorMsg = `Error al guardar la configuración: ${err.message || err}`;
+      setError(errorMsg);
+      console.error('Error al guardar configuración:', err);
     } finally {
       setSaving(false);
     }

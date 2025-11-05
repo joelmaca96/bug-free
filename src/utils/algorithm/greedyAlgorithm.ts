@@ -1,4 +1,4 @@
-import { addDays, format, parseISO, eachDayOfInterval } from 'date-fns';
+import { format, eachDayOfInterval } from 'date-fns';
 import {
   Turno,
   Usuario,
@@ -94,13 +94,33 @@ export class GreedyAlgorithm {
       // Verificar si es festivo regional
       const esFestivo = this.farmacia.configuracion.festivosRegionales.includes(fechaStr);
 
-      // Verificar si hay jornada de guardia
+      // Verificar horario habitual del día
+      const horarioHabitual = this.farmacia.configuracion.horariosHabituales.find(
+        (hh) => hh.dia === diaSemana
+      );
+
+      // Agregar horario habitual si existe
+      if (horarioHabitual) {
+        const horaInicio = this.parseHora(horarioHabitual.inicio);
+        const horaFin = this.parseHora(horarioHabitual.fin);
+
+        slots.push({
+          fecha: fechaStr,
+          horaInicio,
+          horaFin,
+          tipo: esFestivo ? 'festivo' : 'laboral',
+          trabajadoresNecesarios: this.farmacia.configuracion.trabajadoresMinimos,
+          asignaciones: [],
+        });
+      }
+
+      // Verificar si hay jornada de guardia (agregar ADEMÁS del horario habitual)
       const jornadaGuardia = this.farmacia.configuracion.jornadasGuardia.find(
         (jg) => fechaStr >= jg.fechaInicio && fechaStr <= jg.fechaFin
       );
 
       if (jornadaGuardia) {
-        // Slot de guardia
+        // Slot de guardia (adicional al horario habitual)
         const horaInicio = this.parseHora(jornadaGuardia.horaInicio);
         const horaFin = this.parseHora(jornadaGuardia.horaFin);
 
@@ -112,25 +132,6 @@ export class GreedyAlgorithm {
           trabajadoresNecesarios: this.farmacia.configuracion.trabajadoresMinimos,
           asignaciones: [],
         });
-      } else {
-        // Verificar horario habitual del día
-        const horarioHabitual = this.farmacia.configuracion.horariosHabituales.find(
-          (hh) => hh.dia === diaSemana
-        );
-
-        if (horarioHabitual) {
-          const horaInicio = this.parseHora(horarioHabitual.inicio);
-          const horaFin = this.parseHora(horarioHabitual.fin);
-
-          slots.push({
-            fecha: fechaStr,
-            horaInicio,
-            horaFin,
-            tipo: esFestivo ? 'festivo' : 'laboral',
-            trabajadoresNecesarios: this.farmacia.configuracion.trabajadoresMinimos,
-            asignaciones: [],
-          });
-        }
       }
     }
 

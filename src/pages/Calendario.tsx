@@ -15,12 +15,9 @@ import {
   InputLabel,
   Alert,
   CircularProgress,
-  Chip,
   Grid,
   Card,
   CardContent,
-  IconButton,
-  Tooltip,
 } from '@mui/material';
 import FullCalendar from '@fullcalendar/react';
 import dayGridPlugin from '@fullcalendar/daygrid';
@@ -30,7 +27,7 @@ import { DateSelectArg, EventClickArg, EventDropArg } from '@fullcalendar/core';
 import AutoFixHighIcon from '@mui/icons-material/AutoFixHigh';
 import WarningIcon from '@mui/icons-material/Warning';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
-import { format, addMonths, startOfMonth, endOfMonth } from 'date-fns';
+import { format, startOfMonth, endOfMonth } from 'date-fns';
 import { useAuth } from '@/contexts/AuthContext';
 import { Turno, Usuario, Farmacia, Conflicto } from '@/types';
 import {
@@ -125,13 +122,17 @@ const CalendarioPage: React.FC = () => {
       setGenerating(true);
       setError(null);
 
+      console.log('Iniciando generación de calendario para el período:', generatePeriod);
+
       // Cargar configuración
       const config = await getOrCreateConfiguracion(user.farmaciaId);
+      console.log('Configuración del algoritmo cargada:', config.id);
 
       // Ejecutar algoritmo
       const fechaInicio = new Date(generatePeriod.inicio);
       const fechaFin = new Date(generatePeriod.fin);
 
+      console.log('Ejecutando algoritmo de asignación...');
       const resultado = await executeSchedulingAlgorithm(
         config,
         farmacia,
@@ -140,7 +141,10 @@ const CalendarioPage: React.FC = () => {
         fechaFin
       );
 
+      console.log(`Algoritmo completado. Turnos generados: ${resultado.turnos.length}`);
+
       // Eliminar turnos existentes en el período
+      console.log('Eliminando turnos existentes en el período...');
       await deleteTurnosByDateRange(
         user.farmaciaId,
         generatePeriod.inicio,
@@ -148,21 +152,33 @@ const CalendarioPage: React.FC = () => {
       );
 
       // Guardar nuevos turnos
+      console.log('Guardando nuevos turnos en la base de datos...');
       await createTurnosBatch(user.farmaciaId, resultado.turnos);
+      console.log('Turnos guardados exitosamente');
 
-      // Actualizar estado
-      setTurnos(resultado.turnos);
+      // Recargar turnos desde la base de datos para obtener los IDs correctos
+      console.log('Recargando turnos desde la base de datos...');
+      const turnosGuardados = await getTurnosByDateRange(
+        user.farmaciaId,
+        generatePeriod.inicio,
+        generatePeriod.fin
+      );
+      console.log(`Turnos recargados: ${turnosGuardados.length}`);
+
+      // Actualizar estado con los turnos recargados desde la base de datos
+      setTurnos(turnosGuardados);
       setConflictos(resultado.conflictos);
 
       setSuccess(
-        `Calendario generado: ${resultado.turnos.length} turnos creados. ` +
+        `Calendario generado y guardado en la base de datos: ${resultado.turnos.length} turnos creados. ` +
         `${resultado.conflictos.length} conflictos detectados. ` +
         `Score: ${resultado.scoreGlobal.toFixed(0)}`
       );
       setOpenGenerateDialog(false);
     } catch (err: any) {
-      setError(`Error al generar el calendario: ${err.message}`);
-      console.error(err);
+      const errorMsg = `Error al generar el calendario: ${err.message || err}`;
+      setError(errorMsg);
+      console.error('Error en la generación del calendario:', err);
     } finally {
       setGenerating(false);
     }
@@ -396,6 +412,7 @@ const CalendarioPage: React.FC = () => {
             right: 'dayGridMonth,timeGridWeek,timeGridDay',
           }}
           locale="es"
+          firstDay={0}
           editable={true}
           selectable={true}
           selectMirror={true}
