@@ -210,6 +210,40 @@
           }
         }
       }
+    },
+
+    "usuarios": {
+      // Permitir listar todos los usuarios solo a superusers
+      ".read": "
+        auth != null &&
+        root.child('usuarios').child(auth.uid).child('rol').val() === 'superuser'
+      ",
+
+      "$userId": {
+        ".read": "
+          auth != null && (
+            auth.uid === $userId ||
+            root.child('usuarios').child(auth.uid).child('rol').val() === 'superuser' ||
+            (
+              root.child('usuarios').child(auth.uid).child('rol').val() === 'admin' &&
+              root.child('usuarios').child(auth.uid).child('empresaId').val() === data.child('empresaId').val()
+            ) ||
+            (
+              root.child('usuarios').child(auth.uid).child('rol').val() === 'gestor' &&
+              root.child('usuarios').child(auth.uid).child('farmaciaId').val() === data.child('farmaciaId').val()
+            )
+          )
+        ",
+
+        ".write": "
+          root.child('usuarios').child(auth.uid).child('rol').val() === 'superuser' ||
+          (
+            root.child('usuarios').child(auth.uid).child('rol').val() === 'admin' &&
+            root.child('usuarios').child(auth.uid).child('empresaId').val() === newData.child('empresaId').val()
+          ) ||
+          auth.uid === $userId
+        "
+      }
     }
   }
 }
