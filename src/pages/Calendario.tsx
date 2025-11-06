@@ -50,7 +50,8 @@ import {
   deleteTurno,
   deleteTurnosByDateRange,
   createTurnosBatch,
-} from '@/services/turnosService';
+  subscribeTurnosByMonth,
+} from '@/services/calendariosRealtimeService';
 import { getFarmaciaById } from '@/services/farmaciasService';
 import { getUsuariosByFarmacia } from '@/services/usuariosService';
 import { getOrCreateConfiguracion } from '@/services/configuracionAlgoritmoService';
@@ -135,7 +136,7 @@ const CalendarioPage: React.FC = () => {
   };
 
   const loadTurnosForMonth = async (date: Date) => {
-    if (!user?.farmaciaId || user.farmaciaId.trim() === '') return;
+    if (!user?.farmaciaId || user.farmaciaId.trim() === '' || !user?.empresaId) return;
 
     try {
       const inicio = format(startOfMonth(date), 'yyyy-MM-dd');
@@ -160,7 +161,7 @@ const CalendarioPage: React.FC = () => {
   };
 
   const handleGenerateSchedule = async () => {
-    if (!user?.farmaciaId || user.farmaciaId.trim() === '' || !farmacia) {
+    if (!user?.farmaciaId || user.farmaciaId.trim() === '' || !user?.empresaId || !farmacia) {
       setError('Error: No se ha asignado una farmacia a este usuario. Por favor, contacte con el administrador.');
       return;
     }
@@ -212,7 +213,7 @@ const CalendarioPage: React.FC = () => {
 
       // Guardar nuevos turnos
       console.log('Guardando nuevos turnos en la base de datos...');
-      await createTurnosBatch(user.farmaciaId, resultado.turnos);
+      await createTurnosBatch(user.farmaciaId, user.empresaId, resultado.turnos);
       console.log('Turnos guardados exitosamente');
 
       // Recargar turnos del mes visible actualmente en el calendario
@@ -273,7 +274,7 @@ const CalendarioPage: React.FC = () => {
   };
 
   const handleEventDrop = async (dropInfo: EventDropArg) => {
-    if (!user?.farmaciaId || user.farmaciaId.trim() === '') return;
+    if (!user?.farmaciaId || user.farmaciaId.trim() === '' || !user?.empresaId) return;
 
     const turno = turnos.find(t => t.id === dropInfo.event.id);
     if (!turno) return;
@@ -298,7 +299,7 @@ const CalendarioPage: React.FC = () => {
     }
 
     try {
-      await updateTurno(user.farmaciaId, turno.id, {
+      await updateTurno(user.farmaciaId, turno.id, turno.fecha, {
         fecha: updatedTurno.fecha,
       });
 
@@ -311,7 +312,7 @@ const CalendarioPage: React.FC = () => {
   };
 
   const handleSaveTurno = async () => {
-    if (!user?.farmaciaId || user.farmaciaId.trim() === '' || !selectedTurno) return;
+    if (!user?.farmaciaId || user.farmaciaId.trim() === '' || !user?.empresaId || !selectedTurno) return;
 
     try {
       // Calcular duración del turno
@@ -319,7 +320,7 @@ const CalendarioPage: React.FC = () => {
 
       if (selectedTurno.id) {
         // Actualizar turno existente
-        await updateTurno(user.farmaciaId, selectedTurno.id, {
+        await updateTurno(user.farmaciaId, selectedTurno.id, selectedTurno.fecha, {
           empleadoId: turnoForm.empleadoId,
           horaInicio: turnoForm.horaInicio,
           horaFin: turnoForm.horaFin,
@@ -343,7 +344,7 @@ const CalendarioPage: React.FC = () => {
           estado: 'confirmado',
         };
 
-        const id = await createTurno(user.farmaciaId, nuevoTurno);
+        const id = await createTurno(user.farmaciaId, user.empresaId, nuevoTurno);
         setTurnos([...turnos, { ...nuevoTurno, id }]);
       }
 
@@ -355,11 +356,11 @@ const CalendarioPage: React.FC = () => {
   };
 
   const handleDeleteTurno = async () => {
-    if (!user?.farmaciaId || user.farmaciaId.trim() === '' || !selectedTurno?.id) return;
+    if (!user?.farmaciaId || user.farmaciaId.trim() === '' || !user?.empresaId || !selectedTurno?.id) return;
 
     try {
       console.log('Iniciando borrado de turno desde diálogo:', selectedTurno.id);
-      await deleteTurno(user.farmaciaId, selectedTurno.id);
+      await deleteTurno(user.farmaciaId, selectedTurno.id, selectedTurno.fecha);
 
       // Recargar turnos desde la base de datos para asegurar sincronización
       const calendarApi = calendarRef.current?.getApi();
@@ -376,13 +377,20 @@ const CalendarioPage: React.FC = () => {
 
   // Manejar eliminación de evento (tecla Delete o botón eliminar)
   const handleEventRemove = async (removeInfo: any) => {
-    if (!user?.farmaciaId || user.farmaciaId.trim() === '') return;
+    if (!user?.farmaciaId || user.farmaciaId.trim() === '' || !user?.empresaId) return;
 
     const turnoId = removeInfo.event.id;
+    const turno = turnos.find(t => t.id === turnoId);
+
+    if (!turno) {
+      console.error('Turno no encontrado:', turnoId);
+      return;
+    }
+
     console.log('Evento eliminado desde calendario (tecla Delete):', turnoId);
 
     try {
-      await deleteTurno(user.farmaciaId, turnoId);
+      await deleteTurno(user.farmaciaId, turnoId, turno.fecha);
 
       // Recargar turnos desde la base de datos para asegurar sincronización
       const calendarApi = calendarRef.current?.getApi();
@@ -400,7 +408,7 @@ const CalendarioPage: React.FC = () => {
 
   // Limpiar todos los turnos del mes visible
   const handleClearMonth = async () => {
-    if (!user?.farmaciaId || user.farmaciaId.trim() === '') return;
+    if (!user?.farmaciaId || user.farmaciaId.trim() === '' || !user?.empresaId) return;
 
     const confirmacion = window.confirm(
       '¿Estás seguro de que deseas eliminar todos los turnos del mes visible? Esta acción no se puede deshacer.'
