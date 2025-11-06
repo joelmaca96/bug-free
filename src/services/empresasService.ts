@@ -6,14 +6,16 @@ import {
   addDoc,
   updateDoc,
   deleteDoc,
+  setDoc,
   query,
   where,
   serverTimestamp,
   Timestamp,
   writeBatch,
 } from 'firebase/firestore';
-import { db } from './firebase';
-import { Empresa } from '@/types';
+import { createUserWithEmailAndPassword } from 'firebase/auth';
+import { db, auth } from './firebase';
+import { Empresa, Usuario, DatosPersonales } from '@/types';
 import { deleteUsuarioComplete } from './usuariosService';
 
 const COLLECTION_NAME = 'empresas';
@@ -62,10 +64,12 @@ export const createEmpresa = async (
   empresa: Omit<Empresa, 'id' | 'createdAt' | 'updatedAt'>
 ): Promise<string> => {
   try {
-    // Verificar que el adminId no esté ya asignado a otra empresa
-    const existingEmpresa = await getEmpresaByAdminId(empresa.adminId);
-    if (existingEmpresa) {
-      throw new Error('El usuario admin ya está asignado a otra empresa');
+    // Verificar que el adminId no esté ya asignado a otra empresa (solo si se proporciona)
+    if (empresa.adminId) {
+      const existingEmpresa = await getEmpresaByAdminId(empresa.adminId);
+      if (existingEmpresa) {
+        throw new Error('El usuario admin ya está asignado a otra empresa');
+      }
     }
 
     const docRef = await addDoc(collection(db, COLLECTION_NAME), {
@@ -138,6 +142,8 @@ export const getEmpresaByCif = async (cif: string): Promise<Empresa | null> => {
 // Buscar empresa por adminId
 export const getEmpresaByAdminId = async (adminId: string): Promise<Empresa | null> => {
   try {
+    if (!adminId) return null;
+
     const q = query(collection(db, COLLECTION_NAME), where('adminId', '==', adminId));
     const querySnapshot = await getDocs(q);
 
@@ -149,6 +155,63 @@ export const getEmpresaByAdminId = async (adminId: string): Promise<Empresa | nu
     return null;
   } catch (error) {
     console.error('Error getting empresa by adminId:', error);
+    throw error;
+  }
+};
+
+// Crear empresa con admin en una transacción atómica
+export const createEmpresaConAdmin = async (
+  empresaData: Omit<Empresa, 'id' | 'adminId' | 'createdAt' | 'updatedAt'>,
+  adminData: {
+    email: string;
+    password: string;
+    datosPersonales: DatosPersonales;
+  }
+): Promise<{ empresaId: string; adminId: string }> => {
+  try {
+    // 1. Crear usuario en Firebase Auth
+    const userCredential = await createUserWithEmailAndPassword(
+      auth,
+      adminData.email,
+      adminData.password
+    );
+    const adminId = userCredential.user.uid;
+
+    // 2. Crear empresa en Firestore
+    const empresaRef = await addDoc(collection(db, COLLECTION_NAME), {
+      ...empresaData,
+      adminId,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    });
+    const empresaId = empresaRef.id;
+
+    // 3. Crear documento de usuario en Firestore con empresaId asignado
+    const newAdmin: Usuario = {
+      uid: adminId,
+      datosPersonales: adminData.datosPersonales,
+      rol: 'admin',
+      farmaciaId: '',
+      empresaId,
+      restricciones: {
+        horasMaximasDiarias: 10,
+        horasMaximasSemanales: 40,
+        horasMaximasMensuales: 160,
+        horasMaximasAnuales: 1920,
+        diasFestivos: [],
+      },
+      incluirEnCalendario: false, // Admin no se incluye en calendario por defecto
+    };
+
+    await setDoc(doc(db, 'usuarios', adminId), {
+      ...newAdmin,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    });
+
+    return { empresaId, adminId };
+  } catch (error) {
+    console.error('Error creating empresa con admin:', error);
     throw error;
   }
 };

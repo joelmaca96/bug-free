@@ -5,13 +5,15 @@ import {
   getDocs,
   updateDoc,
   deleteDoc,
+  setDoc,
   query,
   where,
   serverTimestamp,
   Timestamp,
 } from 'firebase/firestore';
 import { httpsCallable } from 'firebase/functions';
-import { db, functions } from './firebase';
+import { createUserWithEmailAndPassword } from 'firebase/auth';
+import { db, functions, auth } from './firebase';
 import { Usuario } from '@/types';
 
 const COLLECTION_NAME = 'usuarios';
@@ -218,6 +220,37 @@ export const getAdminsDisponibles = async (): Promise<Usuario[]> => {
     return admins.filter(admin => !admin.empresaId || admin.empresaId === '');
   } catch (error) {
     console.error('Error getting admins disponibles:', error);
+    throw error;
+  }
+};
+
+// Crear un nuevo usuario completo (Auth + Firestore)
+// IMPORTANTE: Solo debe ser usado por SuperUser o Admin con permisos especiales
+export const createUsuarioComplete = async (
+  email: string,
+  password: string,
+  userData: Omit<Usuario, 'uid' | 'createdAt' | 'updatedAt'>
+): Promise<string> => {
+  try {
+    // Crear usuario en Firebase Auth
+    const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+    const uid = userCredential.user.uid;
+
+    // Crear documento en Firestore
+    const newUser: Usuario = {
+      uid,
+      ...userData,
+    };
+
+    await setDoc(doc(db, COLLECTION_NAME, uid), {
+      ...newUser,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    });
+
+    return uid;
+  } catch (error) {
+    console.error('Error creating usuario complete:', error);
     throw error;
   }
 };
