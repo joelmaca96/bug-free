@@ -124,15 +124,15 @@ const Register: React.FC = () => {
         alignItems: 'center',
         justifyContent: 'center',
         position: 'relative',
-        overflow: 'hidden',
-        py: 4,
+        overflow: 'auto',
+        py: 3,
       }}
     >
       <Container maxWidth="sm">
         <Paper
           elevation={8}
           sx={{
-            p: 5,
+            p: { xs: 3, sm: 4 },
             width: '100%',
             borderRadius: 4,
             animation: 'slideUp 0.5s ease-out',
@@ -140,17 +140,18 @@ const Register: React.FC = () => {
             background: theme.palette.mode === 'light'
               ? 'rgba(255, 255, 255, 0.95)'
               : 'rgba(43, 36, 77, 0.95)',
+            my: 2,
           }}
         >
           <Box
             sx={{
               animation: 'fadeIn 0.8s ease-out',
               textAlign: 'center',
-              mb: 3,
+              mb: 2,
             }}
           >
             <Typography
-              variant="h3"
+              variant="h4"
               component="h1"
               gutterBottom
               sx={{
@@ -164,7 +165,7 @@ const Register: React.FC = () => {
               Crear Cuenta
             </Typography>
             <Typography
-              variant="subtitle1"
+              variant="body2"
               color="text.secondary"
               sx={{
                 fontWeight: 500,
@@ -175,19 +176,20 @@ const Register: React.FC = () => {
           </Box>
 
           {error && (
-            <Alert severity="error" sx={{ mt: 2, mb: 2 }}>
+            <Alert severity="error" sx={{ mt: 1, mb: 1 }}>
               {error}
             </Alert>
           )}
 
-          <Box component="form" onSubmit={handleEmailRegister} sx={{ mt: 3 }}>
+          <Box component="form" onSubmit={handleEmailRegister} sx={{ mt: 2 }}>
             <TextField
               fullWidth
               label="Nombre"
               name="nombre"
               value={formData.nombre}
               onChange={handleChange}
-              margin="normal"
+              margin="dense"
+              size="small"
               required
               disabled={loading}
             />
@@ -197,7 +199,8 @@ const Register: React.FC = () => {
               name="apellidos"
               value={formData.apellidos}
               onChange={handleChange}
-              margin="normal"
+              margin="dense"
+              size="small"
               required
               disabled={loading}
             />
@@ -208,7 +211,8 @@ const Register: React.FC = () => {
               type="email"
               value={formData.email}
               onChange={handleChange}
-              margin="normal"
+              margin="dense"
+              size="small"
               required
               disabled={loading}
             />
@@ -219,7 +223,8 @@ const Register: React.FC = () => {
               type="tel"
               value={formData.telefono}
               onChange={handleChange}
-              margin="normal"
+              margin="dense"
+              size="small"
               disabled={loading}
             />
             <TextField
@@ -229,7 +234,8 @@ const Register: React.FC = () => {
               type="password"
               value={formData.password}
               onChange={handleChange}
-              margin="normal"
+              margin="dense"
+              size="small"
               required
               disabled={loading}
               helperText="Mínimo 6 caracteres"
@@ -241,7 +247,8 @@ const Register: React.FC = () => {
               type="password"
               value={formData.confirmPassword}
               onChange={handleChange}
-              margin="normal"
+              margin="dense"
+              size="small"
               required
               disabled={loading}
             />
@@ -251,8 +258,8 @@ const Register: React.FC = () => {
               variant="contained"
               size="large"
               sx={{
-                mt: 3,
-                mb: 2,
+                mt: 2,
+                mb: 1.5,
                 py: 1.5,
                 background: theme.palette.gradient.secondary,
                 '&:hover': {
@@ -266,17 +273,16 @@ const Register: React.FC = () => {
             </Button>
           </Box>
 
-          <Divider sx={{ my: 3 }}>o</Divider>
+          <Divider sx={{ my: 2 }}>o</Divider>
 
           <Button
             fullWidth
             variant="outlined"
-            size="large"
             startIcon={<GoogleIcon />}
             onClick={handleGoogleRegister}
             sx={{
-              mb: 2,
-              py: 1.5,
+              mb: 1.5,
+              py: 1.2,
               borderWidth: 2,
               '&:hover': {
                 borderWidth: 2,
@@ -290,13 +296,12 @@ const Register: React.FC = () => {
           <Button
             fullWidth
             variant="outlined"
-            size="large"
             startIcon={<AppleIcon />}
             onClick={handleAppleRegister}
             disabled={loading}
             sx={{
-              mb: 2,
-              py: 1.5,
+              mb: 1.5,
+              py: 1.2,
               borderWidth: 2,
               '&:hover': {
                 borderWidth: 2,
@@ -306,7 +311,7 @@ const Register: React.FC = () => {
             Continuar con Apple
           </Button>
 
-          <Box sx={{ mt: 2, textAlign: 'center' }}>
+          <Box sx={{ mt: 1.5, textAlign: 'center' }}>
             <Typography variant="body2">
               ¿Ya tienes cuenta?{' '}
               <MuiLink component={Link} to="/login" underline="hover">
