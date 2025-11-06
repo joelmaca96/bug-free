@@ -24,7 +24,7 @@ import {
   getOrCreateConfiguracion,
   updateConfiguracion,
   getDefaultConfig,
-} from '@/services/configuracionAlgoritmoService';
+} from '@/services/configuracionAlgoritmoRealtimeService';
 
 const ConfiguracionAlgoritmoPage: React.FC = () => {
   const { user } = useAuth();

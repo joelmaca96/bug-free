@@ -31,8 +31,8 @@ import { format, startOfMonth, endOfMonth } from 'date-fns';
 import { useAuth } from '@/contexts/AuthContext';
 import { Usuario, Turno, Farmacia } from '@/types';
 import { getTurnosByDateRange } from '@/services/turnosService';
-import { getFarmaciaById } from '@/services/farmaciasService';
-import { getUsuariosByFarmacia } from '@/services/usuariosService';
+import { getFarmaciaById } from '@/services/farmaciasRealtimeService';
+import { getUsuariosByFarmacia } from '@/services/usuariosRealtimeService';
 import {
   generarPDFEmpleado,
   generarPDFCompleto,

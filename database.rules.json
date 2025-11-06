@@ -1,41 +1,176 @@
 {
   "rules": {
+    "usuarios": {
+      "$userId": {
+        ".read": "
+          auth != null && (
+            auth.uid === $userId ||
+            root.child('usuarios').child(auth.uid).child('rol').val() === 'superuser' ||
+            (
+              root.child('usuarios').child(auth.uid).child('rol').val() === 'admin' &&
+              root.child('usuarios').child(auth.uid).child('empresaId').val() === data.child('empresaId').val()
+            ) ||
+            (
+              root.child('usuarios').child(auth.uid).child('rol').val() === 'gestor' &&
+              root.child('usuarios').child(auth.uid).child('farmaciaId').val() === data.child('farmaciaId').val()
+            )
+          )
+        ",
+        ".write": "
+          auth != null && (
+            root.child('usuarios').child(auth.uid).child('rol').val() === 'superuser' ||
+            (
+              root.child('usuarios').child(auth.uid).child('rol').val() === 'admin' &&
+              root.child('usuarios').child(auth.uid).child('empresaId').val() === newData.child('empresaId').val()
+            ) ||
+            auth.uid === $userId
+          )
+        "
+      }
+    },
+
+    "empresas": {
+      ".read": "
+        auth != null && (
+          root.child('usuarios').child(auth.uid).child('rol').val() === 'superuser' ||
+          root.child('usuarios').child(auth.uid).child('rol').val() === 'admin'
+        )
+      ",
+      "$empresaId": {
+        ".write": "
+          auth != null && (
+            root.child('usuarios').child(auth.uid).child('rol').val() === 'superuser' ||
+            (
+              root.child('usuarios').child(auth.uid).child('rol').val() === 'admin' &&
+              (
+                data.child('adminId').val() === auth.uid ||
+                newData.child('adminId').val() === auth.uid
+              )
+            )
+          )
+        ",
+        ".validate": "
+          newData.hasChildren(['cif', 'nombre', 'direccion', 'contacto', 'adminId', 'createdAt', 'updatedAt']) &&
+          newData.child('cif').isString() &&
+          newData.child('nombre').isString() &&
+          newData.child('direccion').isString() &&
+          newData.child('contacto').isString() &&
+          newData.child('adminId').isString() &&
+          newData.child('createdAt').isNumber() &&
+          newData.child('updatedAt').isNumber()
+        "
+      }
+    },
+
+    "farmacias": {
+      ".read": "
+        auth != null && (
+          root.child('usuarios').child(auth.uid).child('rol').val() === 'superuser' ||
+          root.child('usuarios').child(auth.uid).child('rol').val() === 'admin' ||
+          root.child('usuarios').child(auth.uid).child('rol').val() === 'gestor'
+        )
+      ",
+      "$farmaciaId": {
+        ".write": "
+          auth != null && (
+            root.child('usuarios').child(auth.uid).child('rol').val() === 'superuser' ||
+            (
+              root.child('usuarios').child(auth.uid).child('rol').val() === 'admin' &&
+              root.child('usuarios').child(auth.uid).child('empresaId').val() === newData.child('empresaId').val()
+            ) ||
+            (
+              root.child('usuarios').child(auth.uid).child('rol').val() === 'gestor' &&
+              root.child('usuarios').child(auth.uid).child('farmaciaId').val() === $farmaciaId
+            )
+          )
+        ",
+        ".validate": "
+          newData.hasChildren(['empresaId', 'cif', 'nombre', 'direccion', 'configuracion', 'createdAt', 'updatedAt']) &&
+          newData.child('empresaId').isString() &&
+          newData.child('cif').isString() &&
+          newData.child('nombre').isString() &&
+          newData.child('direccion').isString() &&
+          newData.child('createdAt').isNumber() &&
+          newData.child('updatedAt').isNumber()
+        "
+      }
+    },
+
+    "configuracionesAlgoritmo": {
+      "$farmaciaId": {
+        ".read": "
+          auth != null && (
+            root.child('usuarios').child(auth.uid).child('rol').val() === 'superuser' ||
+            (
+              root.child('usuarios').child(auth.uid).child('rol').val() === 'admin' &&
+              root.child('usuarios').child(auth.uid).child('empresaId').val() === data.child('empresaId').val()
+            ) ||
+            (
+              (
+                root.child('usuarios').child(auth.uid).child('rol').val() === 'gestor' ||
+                root.child('usuarios').child(auth.uid).child('rol').val() === 'empleado'
+              ) &&
+              root.child('usuarios').child(auth.uid).child('farmaciaId').val() === $farmaciaId
+            )
+          )
+        ",
+        ".write": "
+          auth != null && (
+            root.child('usuarios').child(auth.uid).child('rol').val() === 'superuser' ||
+            (
+              root.child('usuarios').child(auth.uid).child('rol').val() === 'admin' &&
+              root.child('usuarios').child(auth.uid).child('empresaId').val() === newData.child('empresaId').val()
+            ) ||
+            (
+              root.child('usuarios').child(auth.uid).child('rol').val() === 'gestor' &&
+              root.child('usuarios').child(auth.uid).child('farmaciaId').val() === $farmaciaId
+            )
+          )
+        ",
+        ".validate": "
+          newData.hasChildren(['userId', 'farmaciaId', 'prioridades', 'restricciones', 'parametrosOptimizacion', 'version', 'fechaModificacion']) &&
+          newData.child('userId').isString() &&
+          newData.child('farmaciaId').isString() &&
+          newData.child('farmaciaId').val() === $farmaciaId &&
+          newData.child('version').isNumber() &&
+          newData.child('fechaModificacion').isNumber()
+        "
+      }
+    },
+
     "calendarios": {
       "$farmaciaId": {
         "$yearMonth": {
           ".read": "
-            // Superusers pueden leer todo
-            root.child('usuarios').child(auth.uid).child('rol').val() === 'superuser' ||
-            // Admin puede leer calendarios de farmacias de su empresa
-            (
-              root.child('usuarios').child(auth.uid).child('rol').val() === 'admin' &&
-              root.child('usuarios').child(auth.uid).child('empresaId').val() === data.child('metadata/empresaId').val()
-            ) ||
-            // Gestor puede leer calendario de su farmacia
-            (
-              root.child('usuarios').child(auth.uid).child('rol').val() === 'gestor' &&
-              root.child('usuarios').child(auth.uid).child('farmaciaId').val() === $farmaciaId
-            ) ||
-            // Empleado puede leer calendario de su farmacia (pero solo sus turnos - se filtra en la app)
-            (
-              root.child('usuarios').child(auth.uid).child('rol').val() === 'empleado' &&
-              root.child('usuarios').child(auth.uid).child('farmaciaId').val() === $farmaciaId
+            auth != null && (
+              root.child('usuarios').child(auth.uid).child('rol').val() === 'superuser' ||
+              (
+                root.child('usuarios').child(auth.uid).child('rol').val() === 'admin' &&
+                root.child('usuarios').child(auth.uid).child('empresaId').val() === data.child('metadata/empresaId').val()
+              ) ||
+              (
+                root.child('usuarios').child(auth.uid).child('rol').val() === 'gestor' &&
+                root.child('usuarios').child(auth.uid).child('farmaciaId').val() === $farmaciaId
+              ) ||
+              (
+                root.child('usuarios').child(auth.uid).child('rol').val() === 'empleado' &&
+                root.child('usuarios').child(auth.uid).child('farmaciaId').val() === $farmaciaId
+              )
             )
           ",
 
           ".write": "
-            // Superusers pueden escribir todo
-            root.child('usuarios').child(auth.uid).child('rol').val() === 'superuser' ||
-            // Admin puede escribir calendarios de farmacias de su empresa
-            (
-              root.child('usuarios').child(auth.uid).child('rol').val() === 'admin' &&
-              root.child('usuarios').child(auth.uid).child('empresaId').val() === newData.child('metadata/empresaId').val() &&
-              newData.child('metadata/farmaciaId').val() === $farmaciaId
-            ) ||
-            // Gestor puede escribir calendario de su farmacia
-            (
-              root.child('usuarios').child(auth.uid).child('rol').val() === 'gestor' &&
-              root.child('usuarios').child(auth.uid).child('farmaciaId').val() === $farmaciaId
+            auth != null && (
+              root.child('usuarios').child(auth.uid).child('rol').val() === 'superuser' ||
+              (
+                root.child('usuarios').child(auth.uid).child('rol').val() === 'admin' &&
+                root.child('usuarios').child(auth.uid).child('empresaId').val() === newData.child('metadata/empresaId').val() &&
+                newData.child('metadata/farmaciaId').val() === $farmaciaId
+              ) ||
+              (
+                root.child('usuarios').child(auth.uid).child('rol').val() === 'gestor' &&
+                root.child('usuarios').child(auth.uid).child('farmaciaId').val() === $farmaciaId
+              )
             )
           ",
 
@@ -74,34 +209,6 @@
             }
           }
         }
-      }
-    },
-
-    "usuarios": {
-      "$userId": {
-        ".read": "
-          auth != null && (
-            auth.uid === $userId ||
-            root.child('usuarios').child(auth.uid).child('rol').val() === 'superuser' ||
-            (
-              root.child('usuarios').child(auth.uid).child('rol').val() === 'admin' &&
-              root.child('usuarios').child(auth.uid).child('empresaId').val() === data.child('empresaId').val()
-            ) ||
-            (
-              root.child('usuarios').child(auth.uid).child('rol').val() === 'gestor' &&
-              root.child('usuarios').child(auth.uid).child('farmaciaId').val() === data.child('farmaciaId').val()
-            )
-          )
-        ",
-
-        ".write": "
-          root.child('usuarios').child(auth.uid).child('rol').val() === 'superuser' ||
-          (
-            root.child('usuarios').child(auth.uid).child('rol').val() === 'admin' &&
-            root.child('usuarios').child(auth.uid).child('empresaId').val() === newData.child('empresaId').val()
-          ) ||
-          auth.uid === $userId
-        "
       }
     }
   }

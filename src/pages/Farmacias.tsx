@@ -21,9 +21,9 @@ import {
   createFarmacia,
   updateFarmacia,
   deleteFarmacia,
-} from '@/services/farmaciasService';
-import { getEmpresas, getEmpresaById } from '@/services/empresasService';
-import { getUsuariosByRol, getUsuariosByEmpresa, updateUsuario } from '@/services/usuariosService';
+} from '@/services/farmaciasRealtimeService';
+import { getEmpresas, getEmpresaById } from '@/services/empresasRealtimeService';
+import { getUsuariosByRol, getUsuariosByEmpresa, updateUsuario } from '@/services/usuariosRealtimeService';
 import { Farmacia, Empresa, Usuario } from '@/types';
 import { useAuth } from '@/contexts/AuthContext';
 
