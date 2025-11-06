@@ -23,8 +23,8 @@ import {
   createEmpresa,
   updateEmpresa,
   deleteEmpresa,
-} from '@/services/empresasService';
-import { getAdminsDisponibles, getUsuariosByRol, updateUsuario } from '@/services/usuariosService';
+} from '@/services/empresasRealtimeService';
+import { getAdminsDisponibles, getUsuariosByRol, updateUsuario } from '@/services/usuariosRealtimeService';
 import { Empresa, Usuario } from '@/types';
 
 const Empresas: React.FC = () => {

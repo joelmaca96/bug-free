@@ -31,9 +31,9 @@ import { createUserWithEmailAndPassword } from 'firebase/auth';
 import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { auth, db } from '@/services/firebase';
 import { Usuario, Empresa, Farmacia } from '@/types';
-import { getUsuarios, deleteUsuarioComplete } from '@/services/usuariosService';
-import { getEmpresas, deleteEmpresaCascade, getEmpresaById } from '@/services/empresasService';
-import { getFarmacias, deleteFarmacia } from '@/services/farmaciasService';
+import { getUsuarios, deleteUsuarioComplete } from '@/services/usuariosRealtimeService';
+import { getEmpresas, deleteEmpresaCascade, getEmpresaById } from '@/services/empresasRealtimeService';
+import { getFarmacias, deleteFarmacia } from '@/services/farmaciasRealtimeService';
 import { useNavigate } from 'react-router-dom';
 
 interface TabPanelProps {

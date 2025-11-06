@@ -11,7 +11,7 @@ import {
   Grid,
 } from '@mui/material';
 import { useAuth } from '@/contexts/AuthContext';
-import { getEmpresaById, updateEmpresa } from '@/services/empresasService';
+import { getEmpresaById, updateEmpresa } from '@/services/empresasRealtimeService';
 import { Empresa } from '@/types';
 
 const MiEmpresa: React.FC = () => {

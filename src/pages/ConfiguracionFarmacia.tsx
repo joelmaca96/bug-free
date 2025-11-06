@@ -18,7 +18,7 @@ import LocalHospitalIcon from '@mui/icons-material/LocalHospital';
 import EventIcon from '@mui/icons-material/Event';
 import PeopleIcon from '@mui/icons-material/People';
 import { useAuth } from '@/contexts/AuthContext';
-import { getFarmaciaById, updateFarmacia } from '@/services/farmaciasService';
+import { getFarmaciaById, updateFarmacia } from '@/services/farmaciasRealtimeService';
 import { Farmacia, HorarioHabitual, JornadaGuardia } from '@/types';
 import { validarConfiguracionFarmacia } from '@/utils/scheduleValidations';
 import { migrarSiEsNecesario } from '@/utils/migrateGuardias';

@@ -9,8 +9,8 @@ import {
   OAuthProvider,
   User as FirebaseUser,
 } from 'firebase/auth';
-import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
-import { auth, db } from '@/services/firebase';
+import { auth } from '@/services/firebase';
+import { getUsuarioById, createUsuario } from '@/services/usuariosRealtimeService';
 import { Usuario, AuthContextType } from '@/types';
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -31,20 +31,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<Usuario | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // Cargar datos del usuario desde Firestore
+  // Cargar datos del usuario desde Realtime Database
   const loadUserData = async (firebaseUser: FirebaseUser): Promise<Usuario | null> => {
     try {
-      const userDoc = await getDoc(doc(db, 'usuarios', firebaseUser.uid));
-
-      if (userDoc.exists()) {
-        const userData = userDoc.data() as Usuario;
-        return {
-          ...userData,
-          uid: firebaseUser.uid,
-        };
-      }
-
-      return null;
+      const userData = await getUsuarioById(firebaseUser.uid);
+      return userData;
     } catch (error) {
       console.error('Error loading user data:', error);
       return null;
@@ -92,9 +83,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     try {
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
 
-      // Crear documento de usuario en Firestore
-      const newUser: Usuario = {
-        uid: userCredential.user.uid,
+      // Crear documento de usuario en Realtime Database
+      const newUser: Omit<Usuario, 'uid' | 'createdAt' | 'updatedAt'> = {
         datosPersonales: userData.datosPersonales || {
           nombre: '',
           apellidos: '',
@@ -114,13 +104,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         },
       };
 
-      await setDoc(doc(db, 'usuarios', userCredential.user.uid), {
-        ...newUser,
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
-      });
+      await createUsuario(userCredential.user.uid, newUser);
 
-      setUser(newUser);
+      setUser({
+        uid: userCredential.user.uid,
+        ...newUser,
+      });
     } catch (error) {
       console.error('Error signing up:', error);
       throw error;
@@ -138,8 +127,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
       // Si no existe, crear un nuevo usuario con datos básicos
       if (!userData) {
-        const newUser: Usuario = {
-          uid: userCredential.user.uid,
+        const newUser: Omit<Usuario, 'uid' | 'createdAt' | 'updatedAt'> = {
           datosPersonales: {
             nombre: userCredential.user.displayName?.split(' ')[0] || '',
             apellidos: userCredential.user.displayName?.split(' ').slice(1).join(' ') || '',
@@ -159,13 +147,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           },
         };
 
-        await setDoc(doc(db, 'usuarios', userCredential.user.uid), {
-          ...newUser,
-          createdAt: serverTimestamp(),
-          updatedAt: serverTimestamp(),
-        });
+        await createUsuario(userCredential.user.uid, newUser);
 
-        userData = newUser;
+        userData = {
+          uid: userCredential.user.uid,
+          ...newUser,
+        };
       }
 
       setUser(userData);
@@ -186,8 +173,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
       // Si no existe, crear un nuevo usuario con datos básicos
       if (!userData) {
-        const newUser: Usuario = {
-          uid: userCredential.user.uid,
+        const newUser: Omit<Usuario, 'uid' | 'createdAt' | 'updatedAt'> = {
           datosPersonales: {
             nombre: userCredential.user.displayName?.split(' ')[0] || '',
             apellidos: userCredential.user.displayName?.split(' ').slice(1).join(' ') || '',
@@ -207,13 +193,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           },
         };
 
-        await setDoc(doc(db, 'usuarios', userCredential.user.uid), {
-          ...newUser,
-          createdAt: serverTimestamp(),
-          updatedAt: serverTimestamp(),
-        });
+        await createUsuario(userCredential.user.uid, newUser);
 
-        userData = newUser;
+        userData = {
+          uid: userCredential.user.uid,
+          ...newUser,
+        };
       }
 
       setUser(userData);

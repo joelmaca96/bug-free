@@ -32,9 +32,9 @@ import {
   updateUsuario,
   deleteUsuario,
   deleteUsuarioComplete,
-} from '@/services/usuariosService';
-import { getFarmacias, getFarmaciasByEmpresa } from '@/services/farmaciasService';
-import { getEmpresas, getEmpresaById } from '@/services/empresasService';
+} from '@/services/usuariosRealtimeService';
+import { getFarmacias, getFarmaciasByEmpresa } from '@/services/farmaciasRealtimeService';
+import { getEmpresas, getEmpresaById } from '@/services/empresasRealtimeService';
 import { Usuario, Farmacia, Empresa, UserRole } from '@/types';
 import { useAuth } from '@/contexts/AuthContext';
 import {

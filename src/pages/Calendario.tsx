@@ -52,9 +52,9 @@ import {
   createTurnosBatch,
   subscribeTurnosByMonth,
 } from '@/services/calendariosRealtimeService';
-import { getFarmaciaById } from '@/services/farmaciasService';
-import { getUsuariosByFarmacia } from '@/services/usuariosService';
-import { getOrCreateConfiguracion } from '@/services/configuracionAlgoritmoService';
+import { getFarmaciaById } from '@/services/farmaciasRealtimeService';
+import { getUsuariosByFarmacia } from '@/services/usuariosRealtimeService';
+import { getOrCreateConfiguracion } from '@/services/configuracionAlgoritmoRealtimeService';
 import { executeSchedulingAlgorithm } from '@/utils/algorithm';
 import { TurnoValidator } from '@/utils/algorithm/validation';
 
