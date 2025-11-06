@@ -36,7 +36,7 @@ export interface Empresa {
   nombre: string;
   direccion: string;
   contacto: string;
-  adminId: string; // UID del usuario admin asignado a esta empresa
+  adminId?: string; // UID del usuario admin asignado a esta empresa (opcional)
   createdAt?: Date;
   updatedAt?: Date;
 }

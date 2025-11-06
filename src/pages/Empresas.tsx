@@ -13,6 +13,7 @@ import {
   Select,
   FormControl,
   InputLabel,
+  Typography,
 } from '@mui/material';
 import { DataGrid, GridColDef, GridActionsCellItem } from '@mui/x-data-grid';
 import AddIcon from '@mui/icons-material/Add';
@@ -26,12 +27,14 @@ import {
 } from '@/services/empresasService';
 import { getAdminsDisponibles, getUsuariosByRol, updateUsuario } from '@/services/usuariosService';
 import { Empresa, Usuario } from '@/types';
+import CreateEmpresaConAdminDialog from '@/components/CreateEmpresaConAdminDialog';
 
 const Empresas: React.FC = () => {
   const [empresas, setEmpresas] = useState<Empresa[]>([]);
   const [admins, setAdmins] = useState<Usuario[]>([]);
   const [loading, setLoading] = useState(true);
   const [openDialog, setOpenDialog] = useState(false);
+  const [openCreateWithAdminDialog, setOpenCreateWithAdminDialog] = useState(false);
   const [editingEmpresa, setEditingEmpresa] = useState<Empresa | null>(null);
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' as 'success' | 'error' });
 
@@ -104,11 +107,6 @@ const Empresas: React.FC = () => {
 
   const handleSave = async () => {
     try {
-      if (!formData.adminId) {
-        showSnackbar('Debe seleccionar un administrador para la empresa', 'error');
-        return;
-      }
-
       const previousAdminId = editingEmpresa?.adminId;
 
       if (editingEmpresa) {
@@ -120,15 +118,19 @@ const Empresas: React.FC = () => {
           if (previousAdminId) {
             await updateUsuario(previousAdminId, { empresaId: '' });
           }
-          // Asignar el nuevo admin
-          await updateUsuario(formData.adminId, { empresaId: editingEmpresa.id });
+          // Asignar el nuevo admin (solo si se seleccionó uno)
+          if (formData.adminId) {
+            await updateUsuario(formData.adminId, { empresaId: editingEmpresa.id });
+          }
         }
 
         showSnackbar('Empresa actualizada correctamente', 'success');
       } else {
         const empresaId = await createEmpresa(formData);
-        // Asignar el admin a la empresa
-        await updateUsuario(formData.adminId, { empresaId });
+        // Asignar el admin a la empresa (solo si se seleccionó uno)
+        if (formData.adminId) {
+          await updateUsuario(formData.adminId, { empresaId });
+        }
         showSnackbar('Empresa creada correctamente', 'success');
       }
       handleCloseDialog();
@@ -155,7 +157,8 @@ const Empresas: React.FC = () => {
     }
   };
 
-  const getAdminName = (adminId: string) => {
+  const getAdminName = (adminId?: string) => {
+    if (!adminId) return 'Sin asignar';
     const admin = admins.find(a => a.uid === adminId);
     return admin ? `${admin.datosPersonales.nombre} ${admin.datosPersonales.apellidos}` : 'Sin asignar';
   };
@@ -195,13 +198,22 @@ const Empresas: React.FC = () => {
     <Box>
       <Box sx={{ mb: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <h1>Gestión de Empresas</h1>
-        <Button
-          variant="contained"
-          startIcon={<AddIcon />}
-          onClick={() => handleOpenDialog()}
-        >
-          Nueva Empresa
-        </Button>
+        <Box sx={{ display: 'flex', gap: 1 }}>
+          <Button
+            variant="outlined"
+            startIcon={<AddIcon />}
+            onClick={() => setOpenCreateWithAdminDialog(true)}
+          >
+            Empresa + Admin
+          </Button>
+          <Button
+            variant="contained"
+            startIcon={<AddIcon />}
+            onClick={() => handleOpenDialog()}
+          >
+            Nueva Empresa
+          </Button>
+        </Box>
       </Box>
 
       <DataGrid
@@ -252,13 +264,16 @@ const Empresas: React.FC = () => {
             onChange={(e) => setFormData({ ...formData, contacto: e.target.value })}
             required
           />
-          <FormControl fullWidth margin="dense" required>
+          <FormControl fullWidth margin="dense">
             <InputLabel>Administrador</InputLabel>
             <Select
               value={formData.adminId}
               onChange={(e) => setFormData({ ...formData, adminId: e.target.value })}
               label="Administrador"
             >
+              <MenuItem value="">
+                <em>Sin administrador asignado</em>
+              </MenuItem>
               {admins
                 .filter(admin => !admin.empresaId || admin.uid === editingEmpresa?.adminId)
                 .map((admin) => (
@@ -268,6 +283,11 @@ const Empresas: React.FC = () => {
                 ))}
             </Select>
           </FormControl>
+          {!formData.adminId && (
+            <Alert severity="warning" sx={{ mt: 2 }}>
+              Esta empresa no tendrá un administrador asignado. Podrás asignarlo más tarde.
+            </Alert>
+          )}
         </DialogContent>
         <DialogActions>
           <Button onClick={handleCloseDialog}>Cancelar</Button>
@@ -276,6 +296,15 @@ const Empresas: React.FC = () => {
           </Button>
         </DialogActions>
       </Dialog>
+
+      <CreateEmpresaConAdminDialog
+        open={openCreateWithAdminDialog}
+        onClose={() => setOpenCreateWithAdminDialog(false)}
+        onSuccess={() => {
+          showSnackbar('Empresa y administrador creados correctamente', 'success');
+          loadData();
+        }}
+      />
 
       <Snackbar
         open={snackbar.open}

@@ -32,6 +32,7 @@ import {
   updateUsuario,
   deleteUsuario,
   deleteUsuarioComplete,
+  createUsuarioComplete,
 } from '@/services/usuariosService';
 import { getFarmacias, getFarmaciasByEmpresa } from '@/services/farmaciasService';
 import { getEmpresas, getEmpresaById } from '@/services/empresasService';
@@ -92,6 +93,7 @@ const Empleados: React.FC = () => {
       diasFestivos: [] as string[],
     },
     incluirEnCalendario: true,
+    password: '', // Solo para crear nuevos usuarios
   });
 
   const [errors, setErrors] = useState({
@@ -101,6 +103,7 @@ const Empleados: React.FC = () => {
     email: '',
     telefono: '',
     restricciones: '',
+    password: '',
   });
 
   useEffect(() => {
@@ -168,6 +171,7 @@ const Empleados: React.FC = () => {
       email: '',
       telefono: '',
       restricciones: '',
+      password: '',
     };
 
     // Validar nombre
@@ -199,6 +203,13 @@ const Empleados: React.FC = () => {
     const restriccionesValidation = validateRestricciones(formData.restricciones);
     if (!restriccionesValidation.valid) {
       newErrors.restricciones = restriccionesValidation.errors.join(', ');
+    }
+
+    // Validar password (solo al crear nuevo usuario)
+    if (!editingUsuario) {
+      if (!formData.password || formData.password.length < 6) {
+        newErrors.password = 'La contraseña debe tener al menos 6 caracteres';
+      }
     }
 
     setErrors(newErrors);
@@ -238,6 +249,7 @@ const Empleados: React.FC = () => {
           diasFestivos: [],
         },
         incluirEnCalendario: true,
+        password: '',
       });
     }
     setErrors({
@@ -247,6 +259,7 @@ const Empleados: React.FC = () => {
       email: '',
       telefono: '',
       restricciones: '',
+      password: '',
     });
     setTabValue(0);
     setOpenDialog(true);
@@ -283,15 +296,28 @@ const Empleados: React.FC = () => {
           showSnackbar('Empleado actualizado correctamente', 'success');
         }
       } else {
-        // Para crear nuevos empleados, se requeriría integración con Auth
-        // Por ahora solo permitimos editar existentes
-        showSnackbar('La creación de nuevos empleados requiere registro previo', 'error');
-        return;
+        // Crear nuevo usuario completo (Auth + Firestore)
+        await createUsuarioComplete(
+          formData.datosPersonales.email,
+          formData.password,
+          {
+            datosPersonales: formData.datosPersonales,
+            rol: formData.rol,
+            farmaciaId: formData.farmaciaId,
+            empresaId: formData.empresaId,
+            restricciones: formData.restricciones,
+            incluirEnCalendario: formData.incluirEnCalendario,
+          }
+        );
+        showSnackbar('Usuario creado correctamente', 'success');
       }
       handleCloseDialog();
       loadData();
-    } catch (error) {
-      showSnackbar('Error al guardar empleado', 'error');
+    } catch (error: any) {
+      const errorMessage = error.code === 'auth/email-already-in-use'
+        ? 'El email ya está en uso'
+        : error.message || 'Error al guardar usuario';
+      showSnackbar(errorMessage, 'error');
     }
   };
 
@@ -511,6 +537,25 @@ const Empleados: React.FC = () => {
                   required
                 />
               </Grid>
+              {!editingUsuario && (
+                <Grid item xs={12} sm={6}>
+                  <TextField
+                    fullWidth
+                    label="Contraseña"
+                    type="password"
+                    value={formData.password}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        password: e.target.value,
+                      })
+                    }
+                    error={!!errors.password}
+                    helperText={errors.password || 'Mínimo 6 caracteres'}
+                    required
+                  />
+                </Grid>
+              )}
               <Grid item xs={12} sm={6}>
                 <TextField
                   select
