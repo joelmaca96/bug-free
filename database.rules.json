@@ -78,6 +78,12 @@
     },
 
     "usuarios": {
+      // Permitir listar todos los usuarios solo a superusers
+      ".read": "
+        auth != null &&
+        root.child('usuarios').child(auth.uid).child('rol').val() === 'superuser'
+      ",
+
       "$userId": {
         ".read": "
           auth != null && (

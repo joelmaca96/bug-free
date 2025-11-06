@@ -54,12 +54,14 @@ service cloud.firestore {
 
     // Reglas para usuarios
     match /usuarios/{userId} {
+      // Permitir a cualquier usuario autenticado leer su propio documento primero (sin otras condiciones)
+      // Esto es crítico para que getUserData() funcione correctamente
+      allow get: if isAuthenticated() && request.auth.uid == userId;
+
       // SuperUser puede ver todos los usuarios
       // Admin puede ver usuarios de su empresa (excepto superusers)
       // Gestor puede ver usuarios de su farmacia (excepto superusers)
-      // Usuarios pueden ver su propia información
       allow get: if isAuthenticated() && (
-        request.auth.uid == userId ||
         isSuperuser() ||
         (isAdmin() && isSameEmpresa(resource.data.empresaId) && resource.data.rol != 'superuser') ||
         (isGestor() && isSameFarmacia(resource.data.farmaciaId) && resource.data.rol != 'superuser')
@@ -185,7 +187,7 @@ service cloud.firestore {
       // Gestor puede leer configuraciones de usuarios de su farmacia
       // Los usuarios pueden leer su propia configuración
       allow read: if isAuthenticated() && (
-        request.auth.uid == userId ||
+        request.auth.uid == configId ||
         isSuperuser() ||
         (isAdmin() && isSameEmpresa(resource.data.empresaId)) ||
         isSameFarmacia(resource.data.farmaciaId)
