@@ -78,21 +78,21 @@ const getTheme = (mode: PaletteMode): Theme => {
       ].join(','),
       h1: {
         fontWeight: 700,
-        fontSize: '3rem',
+        fontSize: '2rem',
         letterSpacing: '-0.02em',
       },
       h2: {
         fontWeight: 700,
-        fontSize: '2rem',
+        fontSize: '1.5rem',
         letterSpacing: '-0.01em',
       },
       h3: {
         fontWeight: 600,
-        fontSize: '1.5rem',
+        fontSize: '1.25rem',
       },
       h4: {
         fontWeight: 600,
-        fontSize: '1.25rem',
+        fontSize: '1.125rem',
       },
       h5: {
         fontWeight: 600,
@@ -103,17 +103,18 @@ const getTheme = (mode: PaletteMode): Theme => {
         fontSize: '0.875rem',
       },
       body1: {
-        fontSize: '1rem',
-        lineHeight: 1.6,
+        fontSize: '0.875rem',
+        lineHeight: 1.5,
       },
       body2: {
-        fontSize: '0.875rem',
-        lineHeight: 1.6,
+        fontSize: '0.8125rem',
+        lineHeight: 1.5,
       },
       button: {
         fontWeight: 600,
         textTransform: 'none',
         letterSpacing: '0.02em',
+        fontSize: '0.875rem',
       },
     },
     shape: {
@@ -188,12 +189,23 @@ const getTheme = (mode: PaletteMode): Theme => {
           root: {
             textTransform: 'none',
             fontWeight: 600,
-            borderRadius: 12, // 0.75rem
-            padding: '12px 20px',
+            borderRadius: 8,
+            padding: '6px 16px',
+            minHeight: '32px',
             transition: 'all 200ms ease',
             '&:hover': {
               transform: 'translateY(-1px)',
             },
+          },
+          sizeSmall: {
+            padding: '4px 10px',
+            fontSize: '0.8125rem',
+            minHeight: '28px',
+          },
+          sizeLarge: {
+            padding: '8px 22px',
+            fontSize: '0.9375rem',
+            minHeight: '40px',
           },
           contained: {
             boxShadow: 'none',
@@ -225,7 +237,7 @@ const getTheme = (mode: PaletteMode): Theme => {
       MuiCard: {
         styleOverrides: {
           root: {
-            borderRadius: 16, // 1rem
+            borderRadius: 12,
             boxShadow: isLight ? '0 2px 16px rgba(0, 0, 0, 0.05)' : '0 2px 16px rgba(0, 0, 0, 0.3)',
             transition: 'box-shadow 0.3s ease, transform 0.3s ease',
             '&:hover': {
@@ -235,16 +247,59 @@ const getTheme = (mode: PaletteMode): Theme => {
           },
         },
       },
+      MuiCardContent: {
+        styleOverrides: {
+          root: {
+            padding: '12px',
+            '&:last-child': {
+              paddingBottom: '12px',
+            },
+          },
+        },
+      },
+      MuiCardHeader: {
+        styleOverrides: {
+          root: {
+            padding: '12px',
+          },
+          title: {
+            fontSize: '1rem',
+            fontWeight: 600,
+          },
+          subheader: {
+            fontSize: '0.8125rem',
+          },
+        },
+      },
       MuiPaper: {
         styleOverrides: {
           root: {
-            borderRadius: 16,
+            borderRadius: 12,
           },
           elevation1: {
             boxShadow: isLight ? '0 2px 16px rgba(0, 0, 0, 0.05)' : '0 2px 16px rgba(0, 0, 0, 0.3)',
           },
           elevation2: {
             boxShadow: isLight ? '0 4px 24px rgba(0, 0, 0, 0.1)' : '0 4px 24px rgba(0, 0, 0, 0.4)',
+          },
+        },
+      },
+      MuiTableCell: {
+        styleOverrides: {
+          root: {
+            padding: '8px 12px',
+            fontSize: '0.8125rem',
+          },
+          head: {
+            fontWeight: 600,
+            fontSize: '0.8125rem',
+          },
+        },
+      },
+      MuiTableContainer: {
+        styleOverrides: {
+          root: {
+            borderRadius: 12,
           },
         },
       },
@@ -292,16 +347,63 @@ const getTheme = (mode: PaletteMode): Theme => {
       MuiChip: {
         styleOverrides: {
           root: {
-            borderRadius: 12,
+            borderRadius: 8,
             fontWeight: 500,
+            height: '28px',
+            fontSize: '0.8125rem',
+          },
+          sizeSmall: {
+            height: '24px',
+            fontSize: '0.75rem',
+          },
+        },
+      },
+      MuiTab: {
+        styleOverrides: {
+          root: {
+            textTransform: 'none',
+            fontWeight: 500,
+            fontSize: '0.875rem',
+            minHeight: '42px',
+            padding: '8px 16px',
+          },
+        },
+      },
+      MuiTabs: {
+        styleOverrides: {
+          root: {
+            minHeight: '42px',
           },
         },
       },
       MuiDialog: {
         styleOverrides: {
           paper: {
-            borderRadius: 24,
+            borderRadius: 16,
             boxShadow: isLight ? '0 8px 32px rgba(0, 0, 0, 0.12)' : '0 8px 32px rgba(0, 0, 0, 0.5)',
+          },
+        },
+      },
+      MuiDialogTitle: {
+        styleOverrides: {
+          root: {
+            padding: '16px 20px',
+            fontSize: '1.125rem',
+            fontWeight: 600,
+          },
+        },
+      },
+      MuiDialogContent: {
+        styleOverrides: {
+          root: {
+            padding: '16px 20px',
+          },
+        },
+      },
+      MuiDialogActions: {
+        styleOverrides: {
+          root: {
+            padding: '12px 20px',
           },
         },
       },
