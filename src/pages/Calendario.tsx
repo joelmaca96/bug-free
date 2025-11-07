@@ -735,7 +735,7 @@ const CalendarioPage: React.FC = () => {
             right: 'dayGridMonth,timeGridWeek,timeGridDay',
           }}
           locale="es"
-          firstDay={0}
+          firstDay={1}
           editable={true}
           selectable={true}
           selectMirror={true}
