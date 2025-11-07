@@ -85,9 +85,9 @@ const ConfiguracionAlgoritmoPage: React.FC = () => {
   };
 
   const handleReset = () => {
-    if (!user?.uid || !user?.farmaciaId) return;
+    if (!user?.uid || !user?.farmaciaId || !config?.empresaId) return;
 
-    const defaultConfig = getDefaultConfig(user.uid, user.farmaciaId);
+    const defaultConfig = getDefaultConfig(user.uid, user.farmaciaId, config.empresaId);
     setConfig({
       ...config!,
       prioridades: defaultConfig.prioridades,

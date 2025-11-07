@@ -9,9 +9,10 @@ import { ConfiguracionAlgoritmo } from '@/types';
 import { getFarmaciaById } from './farmaciasRealtimeService';
 
 // Configuración por defecto
-export const getDefaultConfig = (userId: string, farmaciaId: string): Omit<ConfiguracionAlgoritmo, 'id'> => ({
+export const getDefaultConfig = (userId: string, farmaciaId: string, empresaId?: string): Omit<ConfiguracionAlgoritmo, 'id'> => ({
   userId,
   farmaciaId,
+  empresaId,
   prioridades: {
     coberturaMinima: { peso: 100, activo: true },
     limitesHoras: { peso: 90, activo: true },
@@ -125,20 +126,22 @@ export const getOrCreateConfiguracion = async (
       const farmacia = await getFarmaciaById(farmaciaId);
       const empresaId = farmacia?.empresaId;
 
+      if (!empresaId) {
+        throw new Error('No se pudo obtener empresaId de la farmacia');
+      }
+
       // Crear configuración por defecto
-      const defaultConfig = getDefaultConfig(userId, farmaciaId);
+      const defaultConfig = getDefaultConfig(userId, farmaciaId, empresaId);
       const configRef = ref(realtimeDb, `configuracionesAlgoritmo/${farmaciaId}`);
 
       await set(configRef, {
         ...defaultConfig,
-        empresaId,
         fechaModificacion: Date.now(),
       });
 
       config = {
         id: farmaciaId,
         ...defaultConfig,
-        empresaId,
       };
     }
 

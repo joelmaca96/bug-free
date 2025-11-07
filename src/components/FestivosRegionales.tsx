@@ -42,22 +42,23 @@ const FestivosRegionales: React.FC<FestivosRegionalesProps> = ({
     }
 
     // Verificar que no esté duplicada
-    if (festivos.includes(newFestivo)) {
+    if (festivos && festivos.includes(newFestivo)) {
       setError('Esta fecha ya está añadida');
       return;
     }
 
-    onChange([...festivos, newFestivo]);
+    onChange([...(festivos || []), newFestivo]);
     setNewFestivo('');
     setError('');
   };
 
   const handleDelete = (fecha: string) => {
+    if (!festivos) return;
     onChange(festivos.filter((f) => f !== fecha));
   };
 
   // Agrupar festivos por año
-  const festivosPorAnio = festivos.reduce((acc, festivo) => {
+  const festivosPorAnio = (festivos || []).reduce((acc, festivo) => {
     const year = new Date(festivo).getFullYear();
     if (!acc[year]) {
       acc[year] = [];
@@ -82,7 +83,7 @@ const FestivosRegionales: React.FC<FestivosRegionalesProps> = ({
     { nombre: 'Constitución', fecha: `${new Date().getFullYear()}-12-06` },
     { nombre: 'Inmaculada', fecha: `${new Date().getFullYear()}-12-08` },
     { nombre: 'Navidad', fecha: `${new Date().getFullYear()}-12-25` },
-  ].filter((f) => !festivos.includes(f.fecha));
+  ].filter((f) => !(festivos || []).includes(f.fecha));
 
   return (
     <Box>
@@ -147,7 +148,7 @@ const FestivosRegionales: React.FC<FestivosRegionalesProps> = ({
         </Paper>
       )}
 
-      {festivos.length === 0 ? (
+      {!festivos || festivos.length === 0 ? (
         <Alert severity="info">
           No hay festivos configurados. Añada los festivos regionales y locales
           que apliquen a su farmacia.

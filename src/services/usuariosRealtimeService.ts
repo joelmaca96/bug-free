@@ -11,8 +11,18 @@ import {
   off,
 } from 'firebase/database';
 import { httpsCallable } from 'firebase/functions';
-import { realtimeDb, functions } from './firebase';
+import { createUserWithEmailAndPassword } from 'firebase/auth';
+import { realtimeDb, functions, auth } from './firebase';
 import { Usuario } from '@/types';
+
+// Valores por defecto para restricciones
+const defaultRestricciones = {
+  horasMaximasDiarias: 10,
+  horasMaximasSemanales: 40,
+  horasMaximasMensuales: 160,
+  horasMaximasAnuales: 1920,
+  diasFestivos: [],
+};
 
 // Obtener todos los usuarios
 export const getUsuarios = async (): Promise<Usuario[]> => {
@@ -30,6 +40,7 @@ export const getUsuarios = async (): Promise<Usuario[]> => {
       usuarios.push({
         uid: childSnapshot.key!,
         ...usuarioData,
+        restricciones: usuarioData.restricciones || defaultRestricciones,
         createdAt: usuarioData.createdAt ? new Date(usuarioData.createdAt) : undefined,
         updatedAt: usuarioData.updatedAt ? new Date(usuarioData.updatedAt) : undefined,
       });
@@ -99,6 +110,7 @@ export const getUsuarioById = async (uid: string): Promise<Usuario | null> => {
       return {
         uid,
         ...usuarioData,
+        restricciones: usuarioData.restricciones || defaultRestricciones,
         createdAt: usuarioData.createdAt ? new Date(usuarioData.createdAt) : undefined,
         updatedAt: usuarioData.updatedAt ? new Date(usuarioData.updatedAt) : undefined,
       };
@@ -120,6 +132,7 @@ export const createUsuario = async (
     const usuarioRef = ref(realtimeDb, `usuarios/${uid}`);
     await set(usuarioRef, {
       ...usuario,
+      restricciones: usuario.restricciones || defaultRestricciones,
       createdAt: Date.now(),
       updatedAt: Date.now(),
     });
@@ -153,6 +166,33 @@ export const deleteUsuario = async (uid: string): Promise<void> => {
     await remove(usuarioRef);
   } catch (error) {
     console.error('Error deleting usuario:', error);
+    throw error;
+  }
+};
+
+// Crear usuario completo (Auth + RTDB)
+export const createUsuarioComplete = async (
+  email: string,
+  password: string,
+  userData: Omit<Usuario, 'uid' | 'createdAt' | 'updatedAt'>
+): Promise<string> => {
+  try {
+    // Crear usuario en Firebase Auth
+    const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+    const uid = userCredential.user.uid;
+
+    // Crear datos en Realtime Database
+    const usuarioRef = ref(realtimeDb, `usuarios/${uid}`);
+    await set(usuarioRef, {
+      ...userData,
+      restricciones: userData.restricciones || defaultRestricciones,
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    });
+
+    return uid;
+  } catch (error) {
+    console.error('Error creating usuario complete:', error);
     throw error;
   }
 };
@@ -218,6 +258,7 @@ export const subscribeToUsuario = (
       callback({
         uid,
         ...usuarioData,
+        restricciones: usuarioData.restricciones || defaultRestricciones,
         createdAt: usuarioData.createdAt ? new Date(usuarioData.createdAt) : undefined,
         updatedAt: usuarioData.updatedAt ? new Date(usuarioData.updatedAt) : undefined,
       });

@@ -33,9 +33,9 @@ import {
   deleteUsuario,
   deleteUsuarioComplete,
   createUsuarioComplete,
-} from '@/services/usuariosService';
-import { getFarmacias, getFarmaciasByEmpresa } from '@/services/farmaciasService';
-import { getEmpresas, getEmpresaById } from '@/services/empresasService';
+} from '@/services/usuariosRealtimeService';
+import { getFarmacias, getFarmaciasByEmpresa } from '@/services/farmaciasRealtimeService';
+import { getEmpresas, getEmpresaById } from '@/services/empresasRealtimeService';
 import { Usuario, Farmacia, Empresa, UserRole } from '@/types';
 import { useAuth } from '@/contexts/AuthContext';
 import {
@@ -221,11 +221,23 @@ const Empleados: React.FC = () => {
     if (usuario) {
       setEditingUsuario(usuario);
       setFormData({
-        datosPersonales: usuario.datosPersonales,
-        rol: usuario.rol,
-        farmaciaId: usuario.farmaciaId,
-        empresaId: usuario.empresaId,
-        restricciones: usuario.restricciones,
+        datosPersonales: usuario.datosPersonales || {
+          nombre: '',
+          apellidos: '',
+          nif: '',
+          email: '',
+          telefono: '',
+        },
+        rol: usuario.rol || 'empleado',
+        farmaciaId: usuario.farmaciaId || '',
+        empresaId: usuario.empresaId || '',
+        restricciones: usuario.restricciones || {
+          horasMaximasDiarias: 10,
+          horasMaximasSemanales: 40,
+          horasMaximasMensuales: 160,
+          horasMaximasAnuales: 1920,
+          diasFestivos: [],
+        },
         incluirEnCalendario: usuario.incluirEnCalendario !== undefined ? usuario.incluirEnCalendario : true,
       });
     } else {
@@ -564,13 +576,13 @@ const Empleados: React.FC = () => {
                   value={formData.rol}
                   onChange={(e) => setFormData({ ...formData, rol: e.target.value as UserRole })}
                   required
-                  disabled={editingUsuario?.uid === user?.uid || user?.rol === 'gestor'}
+                  disabled={editingUsuario?.uid === user?.uid || user?.rol === 'gestor' || (user?.rol === 'admin' && editingUsuario?.rol === 'admin')}
                 >
                   <MenuItem value="empleado">Empleado</MenuItem>
                   {(user?.rol === 'admin' || user?.rol === 'superuser') && (
                     <MenuItem value="gestor">Gestor</MenuItem>
                   )}
-                  {user?.rol === 'superuser' && <MenuItem value="admin">Admin</MenuItem>}
+                  {(user?.rol === 'superuser' || (user?.rol === 'admin' && formData.rol === 'admin')) && <MenuItem value="admin">Admin</MenuItem>}
                   {user?.rol === 'superuser' && <MenuItem value="superuser">SuperUser</MenuItem>}
                 </TextField>
               </Grid>

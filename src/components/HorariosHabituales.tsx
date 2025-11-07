@@ -38,10 +38,11 @@ const HorariosHabituales: React.FC<HorariosHabitualesProps> = ({
       inicio: '09:00',
       fin: '14:00',
     };
-    onChange([...horarios, newHorario]);
+    onChange([...(horarios || []), newHorario]);
   };
 
   const handleDelete = (index: number) => {
+    if (!horarios) return;
     const newHorarios = horarios.filter((_, i) => i !== index);
     onChange(newHorarios);
 
@@ -56,6 +57,7 @@ const HorariosHabituales: React.FC<HorariosHabitualesProps> = ({
     field: keyof HorarioHabitual,
     value: string | number
   ) => {
+    if (!horarios) return;
     const newHorarios = [...horarios];
     newHorarios[index] = { ...newHorarios[index], [field]: value };
     onChange(newHorarios);
@@ -77,6 +79,9 @@ const HorariosHabituales: React.FC<HorariosHabitualesProps> = ({
 
   const getHorariosPorDia = () => {
     const porDia: { [key: number]: HorarioHabitual[] } = {};
+    if (!horarios || !Array.isArray(horarios)) {
+      return porDia;
+    }
     horarios.forEach((horario) => {
       if (!porDia[horario.dia]) {
         porDia[horario.dia] = [];
@@ -110,7 +115,7 @@ const HorariosHabituales: React.FC<HorariosHabitualesProps> = ({
         </Button>
       </Box>
 
-      {horarios.length === 0 ? (
+      {!horarios || horarios.length === 0 ? (
         <Alert severity="info">
           No hay horarios configurados. Añada al menos un horario para cada día
           que la farmacia esté abierta.

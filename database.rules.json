@@ -1,248 +1,55 @@
 {
   "rules": {
     "usuarios": {
+      ".read": "auth != null && (root.child('usuarios').child(auth.uid).child('rol').val() === 'superuser' || root.child('usuarios').child(auth.uid).child('rol').val() === 'admin' || root.child('usuarios').child(auth.uid).child('rol').val() === 'gestor')",
       "$userId": {
-        ".read": "
-          auth != null && (
-            auth.uid === $userId ||
-            root.child('usuarios').child(auth.uid).child('rol').val() === 'superuser' ||
-            (
-              root.child('usuarios').child(auth.uid).child('rol').val() === 'admin' &&
-              root.child('usuarios').child(auth.uid).child('empresaId').val() === data.child('empresaId').val()
-            ) ||
-            (
-              root.child('usuarios').child(auth.uid).child('rol').val() === 'gestor' &&
-              root.child('usuarios').child(auth.uid).child('farmaciaId').val() === data.child('farmaciaId').val()
-            )
-          )
-        ",
-        ".write": "
-          auth != null && (
-            root.child('usuarios').child(auth.uid).child('rol').val() === 'superuser' ||
-            (
-              root.child('usuarios').child(auth.uid).child('rol').val() === 'admin' &&
-              root.child('usuarios').child(auth.uid).child('empresaId').val() === newData.child('empresaId').val()
-            ) ||
-            auth.uid === $userId
-          )
-        "
+        ".read": "auth != null && (auth.uid === $userId || root.child('usuarios').child(auth.uid).child('rol').val() === 'superuser' || (root.child('usuarios').child(auth.uid).child('rol').val() === 'admin' && root.child('usuarios').child(auth.uid).child('empresaId').val() === data.child('empresaId').val()) || (root.child('usuarios').child(auth.uid).child('rol').val() === 'gestor' && root.child('usuarios').child(auth.uid).child('farmaciaId').val() === data.child('farmaciaId').val()))",
+        ".write": "auth != null && (root.child('usuarios').child(auth.uid).child('rol').val() === 'superuser' || (root.child('usuarios').child(auth.uid).child('rol').val() === 'admin' && root.child('usuarios').child(auth.uid).child('empresaId').val() === newData.child('empresaId').val() && (!data.exists() || root.child('usuarios').child(auth.uid).child('empresaId').val() === data.child('empresaId').val())) || (root.child('usuarios').child(auth.uid).child('rol').val() === 'gestor' && root.child('usuarios').child(auth.uid).child('farmaciaId').val() === newData.child('farmaciaId').val() && (!data.exists() || root.child('usuarios').child(auth.uid).child('farmaciaId').val() === data.child('farmaciaId').val())) || auth.uid === $userId)"
       }
     },
 
     "empresas": {
-      ".read": "
-        auth != null && (
-          root.child('usuarios').child(auth.uid).child('rol').val() === 'superuser' ||
-          root.child('usuarios').child(auth.uid).child('rol').val() === 'admin'
-        )
-      ",
+      ".read": "auth != null && (root.child('usuarios').child(auth.uid).child('rol').val() === 'superuser' || root.child('usuarios').child(auth.uid).child('rol').val() === 'admin')",
       "$empresaId": {
-        ".write": "
-          auth != null && (
-            root.child('usuarios').child(auth.uid).child('rol').val() === 'superuser' ||
-            (
-              root.child('usuarios').child(auth.uid).child('rol').val() === 'admin' &&
-              (
-                data.child('adminId').val() === auth.uid ||
-                newData.child('adminId').val() === auth.uid
-              )
-            )
-          )
-        ",
-        ".validate": "
-          newData.hasChildren(['cif', 'nombre', 'direccion', 'contacto', 'adminId', 'createdAt', 'updatedAt']) &&
-          newData.child('cif').isString() &&
-          newData.child('nombre').isString() &&
-          newData.child('direccion').isString() &&
-          newData.child('contacto').isString() &&
-          newData.child('adminId').isString() &&
-          newData.child('createdAt').isNumber() &&
-          newData.child('updatedAt').isNumber()
-        "
+        ".read": "auth != null && (root.child('usuarios').child(auth.uid).child('rol').val() === 'superuser' || (root.child('usuarios').child(auth.uid).child('rol').val() === 'admin' && root.child('usuarios').child(auth.uid).child('empresaId').val() === $empresaId))",
+        ".write": "auth != null && (root.child('usuarios').child(auth.uid).child('rol').val() === 'superuser' || (root.child('usuarios').child(auth.uid).child('rol').val() === 'admin' && root.child('usuarios').child(auth.uid).child('empresaId').val() === $empresaId))",
+        ".validate": "newData.hasChildren(['cif', 'nombre', 'direccion', 'contacto', 'adminId', 'createdAt', 'updatedAt']) && newData.child('cif').isString() && newData.child('nombre').isString() && newData.child('direccion').isString() && newData.child('contacto').isString() && newData.child('adminId').isString() && newData.child('createdAt').isNumber() && newData.child('updatedAt').isNumber()"
       }
     },
 
     "farmacias": {
-      ".read": "
-        auth != null && (
-          root.child('usuarios').child(auth.uid).child('rol').val() === 'superuser' ||
-          root.child('usuarios').child(auth.uid).child('rol').val() === 'admin' ||
-          root.child('usuarios').child(auth.uid).child('rol').val() === 'gestor'
-        )
-      ",
+      ".read": "auth != null && (root.child('usuarios').child(auth.uid).child('rol').val() === 'superuser' || root.child('usuarios').child(auth.uid).child('rol').val() === 'admin' || root.child('usuarios').child(auth.uid).child('rol').val() === 'gestor' || root.child('usuarios').child(auth.uid).child('rol').val() === 'empleado')",
       "$farmaciaId": {
-        ".write": "
-          auth != null && (
-            root.child('usuarios').child(auth.uid).child('rol').val() === 'superuser' ||
-            (
-              root.child('usuarios').child(auth.uid).child('rol').val() === 'admin' &&
-              root.child('usuarios').child(auth.uid).child('empresaId').val() === newData.child('empresaId').val()
-            ) ||
-            (
-              root.child('usuarios').child(auth.uid).child('rol').val() === 'gestor' &&
-              root.child('usuarios').child(auth.uid).child('farmaciaId').val() === $farmaciaId
-            )
-          )
-        ",
-        ".validate": "
-          newData.hasChildren(['empresaId', 'cif', 'nombre', 'direccion', 'configuracion', 'createdAt', 'updatedAt']) &&
-          newData.child('empresaId').isString() &&
-          newData.child('cif').isString() &&
-          newData.child('nombre').isString() &&
-          newData.child('direccion').isString() &&
-          newData.child('createdAt').isNumber() &&
-          newData.child('updatedAt').isNumber()
-        "
+        ".read": "auth != null && (root.child('usuarios').child(auth.uid).child('rol').val() === 'superuser' || (root.child('usuarios').child(auth.uid).child('rol').val() === 'admin' && root.child('usuarios').child(auth.uid).child('empresaId').val() === data.child('empresaId').val()) || ((root.child('usuarios').child(auth.uid).child('rol').val() === 'gestor' || root.child('usuarios').child(auth.uid).child('rol').val() === 'empleado') && root.child('usuarios').child(auth.uid).child('farmaciaId').val() === $farmaciaId))",
+        ".write": "auth != null && (root.child('usuarios').child(auth.uid).child('rol').val() === 'superuser' || (root.child('usuarios').child(auth.uid).child('rol').val() === 'admin' && root.child('usuarios').child(auth.uid).child('empresaId').val() === newData.child('empresaId').val() && (!data.exists() || root.child('usuarios').child(auth.uid).child('empresaId').val() === data.child('empresaId').val())) || (root.child('usuarios').child(auth.uid).child('rol').val() === 'gestor' && root.child('usuarios').child(auth.uid).child('farmaciaId').val() === $farmaciaId))",
+        ".validate": "newData.hasChildren(['empresaId', 'cif', 'nombre', 'direccion', 'configuracion', 'createdAt', 'updatedAt']) && newData.child('empresaId').isString() && newData.child('cif').isString() && newData.child('nombre').isString() && newData.child('direccion').isString() && newData.child('createdAt').isNumber() && newData.child('updatedAt').isNumber()"
       }
     },
 
     "configuracionesAlgoritmo": {
+      ".read": "auth != null && (root.child('usuarios').child(auth.uid).child('rol').val() === 'superuser' || root.child('usuarios').child(auth.uid).child('rol').val() === 'admin' || root.child('usuarios').child(auth.uid).child('rol').val() === 'gestor' || root.child('usuarios').child(auth.uid).child('rol').val() === 'empleado')",
       "$farmaciaId": {
-        ".read": "
-          auth != null && (
-            root.child('usuarios').child(auth.uid).child('rol').val() === 'superuser' ||
-            (
-              root.child('usuarios').child(auth.uid).child('rol').val() === 'admin' &&
-              root.child('usuarios').child(auth.uid).child('empresaId').val() === data.child('empresaId').val()
-            ) ||
-            (
-              (
-                root.child('usuarios').child(auth.uid).child('rol').val() === 'gestor' ||
-                root.child('usuarios').child(auth.uid).child('rol').val() === 'empleado'
-              ) &&
-              root.child('usuarios').child(auth.uid).child('farmaciaId').val() === $farmaciaId
-            )
-          )
-        ",
-        ".write": "
-          auth != null && (
-            root.child('usuarios').child(auth.uid).child('rol').val() === 'superuser' ||
-            (
-              root.child('usuarios').child(auth.uid).child('rol').val() === 'admin' &&
-              root.child('usuarios').child(auth.uid).child('empresaId').val() === newData.child('empresaId').val()
-            ) ||
-            (
-              root.child('usuarios').child(auth.uid).child('rol').val() === 'gestor' &&
-              root.child('usuarios').child(auth.uid).child('farmaciaId').val() === $farmaciaId
-            )
-          )
-        ",
-        ".validate": "
-          newData.hasChildren(['userId', 'farmaciaId', 'prioridades', 'restricciones', 'parametrosOptimizacion', 'version', 'fechaModificacion']) &&
-          newData.child('userId').isString() &&
-          newData.child('farmaciaId').isString() &&
-          newData.child('farmaciaId').val() === $farmaciaId &&
-          newData.child('version').isNumber() &&
-          newData.child('fechaModificacion').isNumber()
-        "
+        ".read": "auth != null && (root.child('usuarios').child(auth.uid).child('rol').val() === 'superuser' || (root.child('usuarios').child(auth.uid).child('rol').val() === 'admin' && root.child('usuarios').child(auth.uid).child('empresaId').val() === data.child('empresaId').val()) || ((root.child('usuarios').child(auth.uid).child('rol').val() === 'gestor' || root.child('usuarios').child(auth.uid).child('rol').val() === 'empleado') && root.child('usuarios').child(auth.uid).child('farmaciaId').val() === $farmaciaId))",
+        ".write": "auth != null && (root.child('usuarios').child(auth.uid).child('rol').val() === 'superuser' || (root.child('usuarios').child(auth.uid).child('rol').val() === 'admin' && root.child('usuarios').child(auth.uid).child('empresaId').val() === newData.child('empresaId').val() && (!data.exists() || root.child('usuarios').child(auth.uid).child('empresaId').val() === data.child('empresaId').val())) || (root.child('usuarios').child(auth.uid).child('rol').val() === 'gestor' && root.child('usuarios').child(auth.uid).child('farmaciaId').val() === $farmaciaId))",
+        ".validate": "newData.hasChildren(['userId', 'farmaciaId', 'empresaId', 'prioridades', 'restricciones', 'parametrosOptimizacion', 'version', 'fechaModificacion']) && newData.child('userId').isString() && newData.child('farmaciaId').isString() && newData.child('empresaId').isString() && newData.child('farmaciaId').val() === $farmaciaId && newData.child('version').isNumber() && newData.child('fechaModificacion').isNumber()"
       }
     },
 
     "calendarios": {
+      ".read": "auth != null && (root.child('usuarios').child(auth.uid).child('rol').val() === 'superuser' || root.child('usuarios').child(auth.uid).child('rol').val() === 'admin' || root.child('usuarios').child(auth.uid).child('rol').val() === 'gestor' || root.child('usuarios').child(auth.uid).child('rol').val() === 'empleado')",
       "$farmaciaId": {
         "$yearMonth": {
-          ".read": "
-            auth != null && (
-              root.child('usuarios').child(auth.uid).child('rol').val() === 'superuser' ||
-              (
-                root.child('usuarios').child(auth.uid).child('rol').val() === 'admin' &&
-                root.child('usuarios').child(auth.uid).child('empresaId').val() === data.child('metadata/empresaId').val()
-              ) ||
-              (
-                root.child('usuarios').child(auth.uid).child('rol').val() === 'gestor' &&
-                root.child('usuarios').child(auth.uid).child('farmaciaId').val() === $farmaciaId
-              ) ||
-              (
-                root.child('usuarios').child(auth.uid).child('rol').val() === 'empleado' &&
-                root.child('usuarios').child(auth.uid).child('farmaciaId').val() === $farmaciaId
-              )
-            )
-          ",
-
-          ".write": "
-            auth != null && (
-              root.child('usuarios').child(auth.uid).child('rol').val() === 'superuser' ||
-              (
-                root.child('usuarios').child(auth.uid).child('rol').val() === 'admin' &&
-                root.child('usuarios').child(auth.uid).child('empresaId').val() === newData.child('metadata/empresaId').val() &&
-                newData.child('metadata/farmaciaId').val() === $farmaciaId
-              ) ||
-              (
-                root.child('usuarios').child(auth.uid).child('rol').val() === 'gestor' &&
-                root.child('usuarios').child(auth.uid).child('farmaciaId').val() === $farmaciaId
-              )
-            )
-          ",
-
+          ".read": "auth != null && (root.child('usuarios').child(auth.uid).child('rol').val() === 'superuser' || (root.child('usuarios').child(auth.uid).child('rol').val() === 'admin' && root.child('usuarios').child(auth.uid).child('empresaId').val() === data.child('metadata/empresaId').val()) || ((root.child('usuarios').child(auth.uid).child('rol').val() === 'gestor' || root.child('usuarios').child(auth.uid).child('rol').val() === 'empleado') && root.child('usuarios').child(auth.uid).child('farmaciaId').val() === $farmaciaId))",
+          ".write": "auth != null && (root.child('usuarios').child(auth.uid).child('rol').val() === 'superuser' || (root.child('usuarios').child(auth.uid).child('rol').val() === 'admin' && root.child('usuarios').child(auth.uid).child('empresaId').val() === newData.child('metadata/empresaId').val() && (!data.exists() || root.child('usuarios').child(auth.uid).child('empresaId').val() === data.child('metadata/empresaId').val()) && newData.child('metadata/farmaciaId').val() === $farmaciaId) || (root.child('usuarios').child(auth.uid).child('rol').val() === 'gestor' && root.child('usuarios').child(auth.uid).child('farmaciaId').val() === $farmaciaId && newData.child('metadata/farmaciaId').val() === $farmaciaId))",
           "metadata": {
-            ".validate": "
-              newData.hasChildren(['farmaciaId', 'empresaId', 'año', 'mes', 'createdAt', 'updatedAt']) &&
-              newData.child('farmaciaId').isString() &&
-              newData.child('empresaId').isString() &&
-              newData.child('año').isNumber() &&
-              newData.child('mes').isNumber() &&
-              newData.child('createdAt').isNumber() &&
-              newData.child('updatedAt').isNumber() &&
-              newData.child('farmaciaId').val() === $farmaciaId
-            "
+            ".validate": "newData.hasChildren(['farmaciaId', 'empresaId', 'año', 'mes', 'createdAt', 'updatedAt']) && newData.child('farmaciaId').isString() && newData.child('empresaId').isString() && newData.child('año').isNumber() && newData.child('mes').isNumber() && newData.child('createdAt').isNumber() && newData.child('updatedAt').isNumber() && newData.child('farmaciaId').val() === $farmaciaId"
           },
-
           "turnos": {
             "$turnoId": {
-              ".validate": "
-                newData.hasChildren(['empleadoId', 'fecha', 'horaInicio', 'horaFin', 'duracionMinutos', 'tipo', 'estado', 'createdAt', 'updatedAt']) &&
-                newData.child('empleadoId').isString() &&
-                newData.child('fecha').isString() &&
-                newData.child('horaInicio').isNumber() &&
-                newData.child('horaFin').isNumber() &&
-                newData.child('duracionMinutos').isNumber() &&
-                newData.child('tipo').val().matches(/^(laboral|guardia|festivo)$/) &&
-                newData.child('estado').val().matches(/^(confirmado|pendiente|conflicto)$/) &&
-                newData.child('createdAt').isNumber() &&
-                newData.child('updatedAt').isNumber() &&
-                newData.child('horaInicio').val() >= 0 &&
-                newData.child('horaInicio').val() <= 23 &&
-                newData.child('horaFin').val() >= 0 &&
-                newData.child('horaFin').val() <= 23 &&
-                newData.child('duracionMinutos').val() > 0
-              "
+              ".validate": "newData.hasChildren(['empleadoId', 'fecha', 'horaInicio', 'horaFin', 'duracionMinutos', 'tipo', 'estado', 'createdAt', 'updatedAt']) && newData.child('empleadoId').isString() && newData.child('fecha').isString() && newData.child('horaInicio').isNumber() && newData.child('horaFin').isNumber() && newData.child('duracionMinutos').isNumber() && newData.child('tipo').val().matches(/^(laboral|guardia|festivo)$/) && newData.child('estado').val().matches(/^(confirmado|pendiente|conflicto)$/) && newData.child('createdAt').isNumber() && newData.child('updatedAt').isNumber() && newData.child('horaInicio').val() >= 0 && newData.child('horaInicio').val() <= 23 && newData.child('horaFin').val() >= 0 && newData.child('horaFin').val() <= 23 && newData.child('duracionMinutos').val() > 0"
             }
           }
         }
-      }
-    },
-
-    "usuarios": {
-      // Permitir listar todos los usuarios solo a superusers
-      ".read": "
-        auth != null &&
-        root.child('usuarios').child(auth.uid).child('rol').val() === 'superuser'
-      ",
-
-      "$userId": {
-        ".read": "
-          auth != null && (
-            auth.uid === $userId ||
-            root.child('usuarios').child(auth.uid).child('rol').val() === 'superuser' ||
-            (
-              root.child('usuarios').child(auth.uid).child('rol').val() === 'admin' &&
-              root.child('usuarios').child(auth.uid).child('empresaId').val() === data.child('empresaId').val()
-            ) ||
-            (
-              root.child('usuarios').child(auth.uid).child('rol').val() === 'gestor' &&
-              root.child('usuarios').child(auth.uid).child('farmaciaId').val() === data.child('farmaciaId').val()
-            )
-          )
-        ",
-
-        ".write": "
-          root.child('usuarios').child(auth.uid).child('rol').val() === 'superuser' ||
-          (
-            root.child('usuarios').child(auth.uid).child('rol').val() === 'admin' &&
-            root.child('usuarios').child(auth.uid).child('empresaId').val() === newData.child('empresaId').val()
-          ) ||
-          auth.uid === $userId
-        "
       }
     }
   }

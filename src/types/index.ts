@@ -124,6 +124,7 @@ export interface ParametrosOptimizacion {
 
 export interface ConfiguracionAlgoritmo {
   id: string;
+  userId: string;
   farmaciaId: string;
   empresaId?: string; // Agregado para optimizar reglas de seguridad
   prioridades: PrioridadesAlgoritmo;

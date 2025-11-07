@@ -136,7 +136,7 @@ const CalendarioPage: React.FC = () => {
   };
 
   const loadTurnosForMonth = async (date: Date) => {
-    if (!user?.farmaciaId || user.farmaciaId.trim() === '' || !user?.empresaId) return;
+    if (!user?.farmaciaId || user.farmaciaId.trim() === '') return;
 
     try {
       const inicio = format(startOfMonth(date), 'yyyy-MM-dd');
@@ -626,6 +626,7 @@ const CalendarioPage: React.FC = () => {
                             {empleado ? `${empleado.datosPersonales.nombre} ${empleado.datosPersonales.apellidos}` : 'Empleado no encontrado'}
                           </Typography>
                         }
+                        primaryTypographyProps={{ component: 'div' }}
                         secondary={
                           <Box>
                             <Typography variant="body2" color="text.primary" gutterBottom>
@@ -649,6 +650,7 @@ const CalendarioPage: React.FC = () => {
                             )}
                           </Box>
                         }
+                        secondaryTypographyProps={{ component: 'div' }}
                       />
                     </ListItem>
                   </React.Fragment>

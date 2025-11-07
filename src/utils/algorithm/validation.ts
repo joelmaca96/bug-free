@@ -126,6 +126,9 @@ export class TurnoValidator {
    * Verificar si es día festivo del empleado
    */
   static isFestivoEmpleado(turno: Turno, empleado: Usuario): boolean {
+    if (!empleado.restricciones?.diasFestivos || !Array.isArray(empleado.restricciones.diasFestivos)) {
+      return false;
+    }
     return empleado.restricciones.diasFestivos.includes(turno.fecha);
   }
 
