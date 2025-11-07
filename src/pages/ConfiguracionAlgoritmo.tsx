@@ -7,8 +7,6 @@ import {
   TextField,
   Switch,
   FormControlLabel,
-  Select,
-  MenuItem,
   Button,
   Slider,
   Alert,
@@ -19,7 +17,7 @@ import {
 import SaveIcon from '@mui/icons-material/Save';
 import RestoreIcon from '@mui/icons-material/Restore';
 import { useAuth } from '@/contexts/AuthContext';
-import { ConfiguracionAlgoritmo, EstrategiaOptimizacion } from '@/types';
+import { ConfiguracionAlgoritmo } from '@/types';
 import {
   getOrCreateConfiguracion,
   updateConfiguracion,
@@ -475,25 +473,6 @@ const ConfiguracionAlgoritmoPage: React.FC = () => {
             />
           </Grid>
 
-          <Grid item xs={12} md={6}>
-            <TextField
-              fullWidth
-              type="number"
-              label="Margen de Sobrecarga (%)"
-              value={config.restricciones.margenSobrecarga}
-              onChange={(e) =>
-                setConfig({
-                  ...config,
-                  restricciones: {
-                    ...config.restricciones,
-                    margenSobrecarga: Number(e.target.value),
-                  },
-                })
-              }
-              inputProps={{ min: 0, max: 50 }}
-            />
-          </Grid>
-
           <Grid item xs={12}>
             <FormControlLabel
               control={
@@ -521,31 +500,11 @@ const ConfiguracionAlgoritmoPage: React.FC = () => {
         <Typography variant="h6" gutterBottom>
           Parámetros de Optimización
         </Typography>
+        <Typography variant="body2" color="textSecondary" paragraph>
+          Controla el comportamiento del algoritmo de asignación de turnos.
+        </Typography>
 
         <Grid container spacing={3}>
-          <Grid item xs={12} md={6}>
-            <Typography variant="body2" gutterBottom>
-              Estrategia de Optimización
-            </Typography>
-            <Select
-              fullWidth
-              value={config.parametrosOptimizacion.estrategia}
-              onChange={(e) =>
-                setConfig({
-                  ...config,
-                  parametrosOptimizacion: {
-                    ...config.parametrosOptimizacion,
-                    estrategia: e.target.value as EstrategiaOptimizacion,
-                  },
-                })
-              }
-            >
-              <MenuItem value="greedy">Greedy (Rápido)</MenuItem>
-              <MenuItem value="backtracking">Backtracking (Preciso)</MenuItem>
-              <MenuItem value="genetico">Genético (Óptimo)</MenuItem>
-            </Select>
-          </Grid>
-
           <Grid item xs={12} md={6}>
             <TextField
               fullWidth
@@ -562,6 +521,7 @@ const ConfiguracionAlgoritmoPage: React.FC = () => {
                 })
               }
               inputProps={{ min: 100, max: 10000 }}
+              helperText="Número máximo de intentos para optimizar la solución"
             />
           </Grid>
 
@@ -581,6 +541,7 @@ const ConfiguracionAlgoritmoPage: React.FC = () => {
                 })
               }
               inputProps={{ min: 0, max: 1, step: 0.1 }}
+              helperText="Calidad mínima aceptable para la solución (0=cualquiera, 1=perfecta)"
             />
           </Grid>
         </Grid>

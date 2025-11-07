@@ -111,15 +111,11 @@ export interface RestriccionesAlgoritmo {
   maxTurnosConsecutivos: number; // días
   maxHorasDiarias: number; // horas
   permitirHorasExtra: boolean;
-  margenSobrecarga: number; // porcentaje
 }
-
-export type EstrategiaOptimizacion = 'greedy' | 'backtracking' | 'genetico';
 
 export interface ParametrosOptimizacion {
   maxIteraciones: number;
   umbralAceptacion: number;
-  estrategia: EstrategiaOptimizacion;
 }
 
 export interface ConfiguracionAlgoritmo {
