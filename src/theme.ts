@@ -26,94 +26,109 @@ const getTheme = (mode: PaletteMode): Theme => {
     palette: {
       mode,
       primary: {
-        main: isLight ? '#495cfc' : '#66a6ff',
-        light: '#66a6ff',
-        dark: '#372865',
-        contrastText: '#ffffff',
+        main: isLight ? '#00B8C7' : '#008E9B',
+        light: isLight ? '#9FE3E8' : '#66D9FF',
+        dark: isLight ? '#007D85' : '#005E66',
+        contrastText: '#FFFFFF',
       },
       secondary: {
-        main: isLight ? '#5ee7df' : '#ff0070',
-        light: '#5ee7df',
-        dark: '#ff0070',
-        contrastText: isLight ? '#2b244d' : '#ffffff',
+        main: isLight ? '#66A6FF' : '#74F1C1',
+        light: isLight ? '#B8F5CB' : '#66D9FF',
+        dark: isLight ? '#004C4F' : '#003344',
+        contrastText: '#FFFFFF',
       },
       success: {
-        main: '#4caf50',
+        main: isLight ? '#B8F5CB' : '#74F1C1',
       },
       warning: {
         main: '#ff9800',
       },
       error: {
-        main: '#f44336',
+        main: '#FF6BA6',
       },
       background: {
-        default: isLight ? '#f5f5f5' : '#1a1a1a',
-        paper: isLight ? '#ffffff' : '#2b244d',
+        default: isLight ? '#F8FAFB' : '#11161C',
+        paper: isLight ? '#FFFFFF' : '#1C232C',
       },
       text: {
-        primary: isLight ? '#2b244d' : '#ffffff',
-        secondary: isLight ? 'rgba(43, 36, 77, 0.7)' : 'rgba(255, 255, 255, 0.7)',
-        disabled: isLight ? 'rgba(43, 36, 77, 0.4)' : 'rgba(255, 255, 255, 0.4)',
+        primary: isLight ? '#1A1D23' : '#E9EEF1',
+        secondary: isLight ? '#5E6472' : '#9CA8B3',
+        disabled: isLight ? 'rgba(26, 29, 35, 0.4)' : 'rgba(233, 238, 241, 0.4)',
       },
       gradient: {
         primary: isLight
-          ? 'linear-gradient(to top, #5ee7df 0%, #66a6ff 100%)'
-          : 'linear-gradient(to bottom, #372865, #000000)',
+          ? 'linear-gradient(135deg, #00B8C7 0%, #66A6FF 100%)'
+          : 'linear-gradient(135deg, #005E66 0%, #003344 100%)',
         secondary: isLight
-          ? 'linear-gradient(135deg, #5ee7df 0%, #66a6ff 100%)'
-          : 'linear-gradient(135deg, #ff0070 0%, #495cfc 100%)',
+          ? 'linear-gradient(135deg, #66A6FF 0%, #B8F5CB 100%)'
+          : 'linear-gradient(135deg, #74F1C1 0%, #66D9FF 100%)',
       },
     },
     typography: {
       fontFamily: [
+        'Inter',
+        'Manrope',
+        'Space Grotesk',
         '-apple-system',
         'BlinkMacSystemFont',
         '"Segoe UI"',
         'Roboto',
-        '"Oxygen"',
-        '"Ubuntu"',
-        '"Cantarell"',
-        '"Fira Sans"',
-        '"Droid Sans"',
         '"Helvetica Neue"',
         'sans-serif',
       ].join(','),
       h1: {
-        fontWeight: 600,
+        fontWeight: 700,
+        fontSize: '3rem',
+        letterSpacing: '-0.02em',
       },
       h2: {
-        fontWeight: 600,
+        fontWeight: 700,
+        fontSize: '2rem',
+        letterSpacing: '-0.01em',
       },
       h3: {
         fontWeight: 600,
+        fontSize: '1.5rem',
       },
       h4: {
-        fontWeight: 500,
+        fontWeight: 600,
+        fontSize: '1.25rem',
       },
       h5: {
-        fontWeight: 500,
+        fontWeight: 600,
+        fontSize: '1rem',
       },
       h6: {
-        fontWeight: 500,
+        fontWeight: 600,
+        fontSize: '0.875rem',
+      },
+      body1: {
+        fontSize: '1rem',
+        lineHeight: 1.6,
+      },
+      body2: {
+        fontSize: '0.875rem',
+        lineHeight: 1.6,
       },
       button: {
-        fontWeight: 500,
+        fontWeight: 600,
         textTransform: 'none',
+        letterSpacing: '0.02em',
       },
     },
     shape: {
-      borderRadius: 16, // 1rem - Minimus style
+      borderRadius: 12, // 0.75rem - apoteke style
     },
     shadows: [
       'none',
-      isLight ? '0 0 1rem rgba(0, 0, 255, 0.1)' : '0 0 1rem rgba(0, 0, 0, 0.3)',
-      isLight ? '0 0 2rem rgba(0, 0, 255, 0.1)' : '0 0 2rem rgba(0, 0, 0, 0.4)',
-      isLight ? '0 0 2rem rgba(0, 0, 255, 0.15)' : '0 0 2rem rgba(0, 0, 0, 0.5)',
-      isLight ? '0 0 2rem rgba(0, 0, 255, 0.2)' : '0 0 2rem rgba(0, 0, 0, 0.6)',
-      isLight ? '0 0 3rem rgba(0, 0, 255, 0.2)' : '0 0 3rem rgba(0, 0, 0, 0.6)',
-      isLight ? '0 0 3rem rgba(0, 0, 255, 0.25)' : '0 0 3rem rgba(0, 0, 0, 0.7)',
-      isLight ? '0 0 3rem rgba(0, 0, 255, 0.3)' : '0 0 3rem rgba(0, 0, 0, 0.8)',
-      isLight ? '0 0 4rem rgba(0, 0, 255, 0.3)' : '0 0 4rem rgba(0, 0, 0, 0.8)',
+      isLight ? '0 2px 16px rgba(0, 0, 0, 0.05)' : '0 2px 16px rgba(0, 0, 0, 0.3)',
+      isLight ? '0 4px 24px rgba(0, 0, 0, 0.1)' : '0 4px 24px rgba(0, 0, 0, 0.4)',
+      isLight ? '0 8px 32px rgba(0, 0, 0, 0.12)' : '0 8px 32px rgba(0, 0, 0, 0.5)',
+      isLight ? '0 12px 40px rgba(0, 0, 0, 0.15)' : '0 12px 40px rgba(0, 0, 0, 0.6)',
+      isLight ? '0 16px 48px rgba(0, 0, 0, 0.18)' : '0 16px 48px rgba(0, 0, 0, 0.7)',
+      isLight ? '0 20px 56px rgba(0, 0, 0, 0.2)' : '0 20px 56px rgba(0, 0, 0, 0.8)',
+      isLight ? '0 24px 64px rgba(0, 0, 0, 0.22)' : '0 24px 64px rgba(0, 0, 0, 0.85)',
+      isLight ? '0 28px 72px rgba(0, 0, 0, 0.24)' : '0 28px 72px rgba(0, 0, 0, 0.9)',
       '0 0 4rem rgba(0, 0, 0, 0.15)',
       '0 0 4rem rgba(0, 0, 0, 0.15)',
       '0 0 4rem rgba(0, 0, 0, 0.15)',
@@ -152,18 +167,18 @@ const getTheme = (mode: PaletteMode): Theme => {
       MuiCssBaseline: {
         styleOverrides: {
           body: {
-            scrollbarColor: isLight ? '#495cfc #f5f5f5' : '#ff0070 #1a1a1a',
+            scrollbarColor: isLight ? '#00B8C7 #F8FAFB' : '#008E9B #11161C',
             '&::-webkit-scrollbar, & *::-webkit-scrollbar': {
               width: 8,
               height: 8,
             },
             '&::-webkit-scrollbar-thumb, & *::-webkit-scrollbar-thumb': {
               borderRadius: 8,
-              backgroundColor: isLight ? '#495cfc' : '#ff0070',
+              backgroundColor: isLight ? '#00B8C7' : '#008E9B',
               minHeight: 24,
             },
             '&::-webkit-scrollbar-track, & *::-webkit-scrollbar-track': {
-              backgroundColor: isLight ? '#f5f5f5' : '#1a1a1a',
+              backgroundColor: isLight ? '#F8FAFB' : '#11161C',
             },
           },
         },
@@ -172,25 +187,37 @@ const getTheme = (mode: PaletteMode): Theme => {
         styleOverrides: {
           root: {
             textTransform: 'none',
-            fontWeight: 500,
-            borderRadius: 16,
-            padding: '12px 24px',
-            transition: 'all 300ms cubic-bezier(0.4, 0, 0.2, 1)',
+            fontWeight: 600,
+            borderRadius: 12, // 0.75rem
+            padding: '12px 20px',
+            transition: 'all 200ms ease',
             '&:hover': {
-              transform: 'translateY(-2px)',
+              transform: 'translateY(-1px)',
             },
           },
           contained: {
-            boxShadow: isLight ? '0 0 1rem rgba(0, 0, 255, 0.2)' : '0 0 1rem rgba(255, 0, 112, 0.3)',
+            boxShadow: 'none',
             '&:hover': {
-              boxShadow: isLight ? '0 0 2rem rgba(0, 0, 255, 0.3)' : '0 0 2rem rgba(255, 0, 112, 0.4)',
+              boxShadow: isLight ? '0 4px 24px rgba(0, 0, 0, 0.1)' : '0 4px 24px rgba(0, 0, 0, 0.4)',
+            },
+          },
+          containedPrimary: {
+            background: isLight
+              ? 'linear-gradient(135deg, #00B8C7 0%, #66A6FF 100%)'
+              : 'linear-gradient(135deg, #005E66 0%, #003344 100%)',
+            color: '#FFFFFF',
+            '&:hover': {
+              background: isLight
+                ? 'linear-gradient(135deg, #00B8C7 0%, #66A6FF 100%)'
+                : 'linear-gradient(135deg, #005E66 0%, #003344 100%)',
+              filter: 'brightness(1.1)',
             },
           },
           outlined: {
-            borderWidth: 2,
+            borderWidth: 1,
             '&:hover': {
-              borderWidth: 2,
-              backgroundColor: isLight ? 'rgba(73, 92, 252, 0.08)' : 'rgba(255, 0, 112, 0.08)',
+              borderWidth: 1,
+              backgroundColor: isLight ? 'rgba(0, 184, 199, 0.08)' : 'rgba(0, 142, 155, 0.08)',
             },
           },
         },
@@ -198,12 +225,12 @@ const getTheme = (mode: PaletteMode): Theme => {
       MuiCard: {
         styleOverrides: {
           root: {
-            borderRadius: 16,
-            boxShadow: isLight ? '0 0 2rem rgba(0, 0, 255, 0.1)' : '0 0 2rem rgba(0, 0, 0, 0.5)',
-            transition: 'all 300ms cubic-bezier(0.4, 0, 0.2, 1)',
+            borderRadius: 16, // 1rem
+            boxShadow: isLight ? '0 2px 16px rgba(0, 0, 0, 0.05)' : '0 2px 16px rgba(0, 0, 0, 0.3)',
+            transition: 'box-shadow 0.3s ease, transform 0.3s ease',
             '&:hover': {
-              boxShadow: isLight ? '0 0 3rem rgba(0, 0, 255, 0.2)' : '0 0 3rem rgba(0, 0, 0, 0.7)',
-              transform: 'translateY(-4px)',
+              boxShadow: isLight ? '0 4px 24px rgba(0, 0, 0, 0.1)' : '0 4px 24px rgba(0, 0, 0, 0.4)',
+              transform: 'translateY(-2px)',
             },
           },
         },
@@ -214,19 +241,19 @@ const getTheme = (mode: PaletteMode): Theme => {
             borderRadius: 16,
           },
           elevation1: {
-            boxShadow: isLight ? '0 0 1rem rgba(0, 0, 255, 0.1)' : '0 0 1rem rgba(0, 0, 0, 0.3)',
+            boxShadow: isLight ? '0 2px 16px rgba(0, 0, 0, 0.05)' : '0 2px 16px rgba(0, 0, 0, 0.3)',
           },
           elevation2: {
-            boxShadow: isLight ? '0 0 2rem rgba(0, 0, 255, 0.15)' : '0 0 2rem rgba(0, 0, 0, 0.5)',
+            boxShadow: isLight ? '0 4px 24px rgba(0, 0, 0, 0.1)' : '0 4px 24px rgba(0, 0, 0, 0.4)',
           },
         },
       },
       MuiAppBar: {
         styleOverrides: {
           root: {
-            boxShadow: isLight ? '0 0 2rem rgba(0, 0, 255, 0.1)' : '0 0 2rem rgba(0, 0, 0, 0.5)',
+            boxShadow: isLight ? '0 2px 16px rgba(0, 0, 0, 0.05)' : '0 2px 16px rgba(0, 0, 0, 0.3)',
             backdropFilter: 'blur(10px)',
-            backgroundColor: isLight ? 'rgba(255, 255, 255, 0.95)' : 'rgba(43, 36, 77, 0.95)',
+            backgroundColor: isLight ? 'rgba(255, 255, 255, 0.95)' : 'rgba(28, 35, 44, 0.95)',
           },
         },
       },
@@ -234,7 +261,8 @@ const getTheme = (mode: PaletteMode): Theme => {
         styleOverrides: {
           paper: {
             borderRadius: 0,
-            boxShadow: isLight ? '0 0 2rem rgba(0, 0, 255, 0.1)' : '0 0 2rem rgba(0, 0, 0, 0.5)',
+            boxShadow: isLight ? '0 2px 16px rgba(0, 0, 0, 0.05)' : '0 2px 16px rgba(0, 0, 0, 0.3)',
+            backgroundColor: isLight ? '#FFFFFF' : '#1C232C',
           },
         },
       },
@@ -242,17 +270,20 @@ const getTheme = (mode: PaletteMode): Theme => {
         styleOverrides: {
           root: {
             '& .MuiOutlinedInput-root': {
-              borderRadius: 16,
-              transition: 'all 300ms cubic-bezier(0.4, 0, 0.2, 1)',
+              borderRadius: 8, // 0.5rem
+              transition: 'all 0.3s ease',
               '&:hover': {
                 '& .MuiOutlinedInput-notchedOutline': {
-                  borderColor: isLight ? '#495cfc' : '#ff0070',
+                  borderColor: isLight ? '#00B8C7' : '#008E9B',
                 },
               },
               '&.Mui-focused': {
                 boxShadow: isLight
-                  ? '0 0 1rem rgba(73, 92, 252, 0.2)'
-                  : '0 0 1rem rgba(255, 0, 112, 0.3)',
+                  ? '0 0 0 3px rgba(0, 184, 199, 0.2)'
+                  : '0 0 0 3px rgba(0, 142, 155, 0.2)',
+                '& .MuiOutlinedInput-notchedOutline': {
+                  borderColor: isLight ? '#00B8C7' : '#008E9B',
+                },
               },
             },
           },
@@ -270,7 +301,7 @@ const getTheme = (mode: PaletteMode): Theme => {
         styleOverrides: {
           paper: {
             borderRadius: 24,
-            boxShadow: isLight ? '0 0 3rem rgba(0, 0, 255, 0.3)' : '0 0 3rem rgba(0, 0, 0, 0.8)',
+            boxShadow: isLight ? '0 8px 32px rgba(0, 0, 0, 0.12)' : '0 8px 32px rgba(0, 0, 0, 0.5)',
           },
         },
       },
