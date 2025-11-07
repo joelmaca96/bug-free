@@ -531,38 +531,62 @@ export class UnifiedSchedulingAlgorithm {
     // Verificar disponibilidad en fecha
     const state = this.empleadosState.get(empleado.uid);
     if (state?.disponibilidad.get(slot.fecha) === false) {
+      console.log(`[VALIDACIÓN] ✗ Empleado ${empleado.nombre} no disponible en ${slot.fecha}`);
       return false;
     }
 
     // Verificar que no esté ya asignado
     if (slot.asignaciones.includes(empleado.uid)) {
+      console.log(`[VALIDACIÓN] ✗ Empleado ${empleado.nombre} ya asignado a slot ${slot.fecha} ${slot.horaInicio}:00`);
       return false;
     }
 
-    // Crear turno temporal para validación
+    // Buscar si ya existe un turno que se pueda extender
+    const turnosDelDia = (this.turnosPorEmpleado.get(empleado.uid) || []).filter(
+      (t) => t.fecha === slot.fecha
+    );
+
+    let turnoExtendible = turnosDelDia.find(
+      (t) => t.horaFin === slot.horaInicio && t.tipo === slot.tipo
+    );
+
+    // Crear turno temporal para validación (con duración final si se va a extender)
+    const horaInicio = turnoExtendible ? turnoExtendible.horaInicio : slot.horaInicio;
+    const horaFin = slot.horaFin;
+    const duracionFinal = (horaFin - horaInicio) * 60;
+
     const turnoTemporal: Turno = {
       id: 'temp',
       empleadoId: empleado.uid,
       fecha: slot.fecha,
-      horaInicio: slot.horaInicio,
-      horaFin: slot.horaFin,
+      horaInicio: horaInicio,
+      horaFin: horaFin,
+      duracionMinutos: duracionFinal,
       tipo: slot.tipo,
       estado: 'pendiente',
     };
 
-    // Obtener turnos del empleado
-    const turnosEmpleado = this.turnosPorEmpleado.get(empleado.uid) || [];
+    console.log(`[VALIDACIÓN] Validando para ${empleado.nombre}: ${slot.fecha} ${turnoTemporal.horaInicio}:00-${turnoTemporal.horaFin}:00 (${duracionFinal/60}h, ${turnoExtendible ? 'EXTENSIÓN' : 'NUEVO'})`);
+
+    // Obtener turnos del empleado (sin el que vamos a extender si existe)
+    const turnosEmpleado = turnoExtendible
+      ? (this.turnosPorEmpleado.get(empleado.uid) || []).filter(t => t.id !== turnoExtendible!.id)
+      : (this.turnosPorEmpleado.get(empleado.uid) || []);
 
     // Validar restricciones duras
     if (!TurnoValidator.isValidAssignment(turnoTemporal, empleado, turnosEmpleado, this.config)) {
+      console.log(`[VALIDACIÓN] ✗ Falla TurnoValidator (festivos/conflictos/descanso/consecutivos)`);
       return false;
     }
 
-    // Verificar límites de horas
-    if (this.hoursTracker.wouldExceedLimits(empleado, turnoTemporal)) {
+    // Verificar límites de horas (con el turno extendido completo)
+    if (this.hoursTracker.wouldExceedLimits(empleado, turnoTemporal, turnoExtendible?.id)) {
+      const horasActuales = this.hoursTracker.getHorasEmpleado(empleado.uid);
+      console.log(`[VALIDACIÓN] ✗ Excede límites de horas. Diarias: ${horasActuales?.diarias[slot.fecha] || 0}h + ${duracionFinal/60}h > ${empleado.restricciones.horasMaximasDiarias}h`);
       return false;
     }
 
+    console.log(`[VALIDACIÓN] ✓ VÁLIDO`);
     return true;
   }
 
@@ -628,9 +652,25 @@ export class UnifiedSchedulingAlgorithm {
     for (const turno of turnosDelDia) {
       // Intentar extender turno existente si es contiguo
       if (turno.horaFin === slot.horaInicio && turno.tipo === slot.tipo) {
+        // Guardar copia del turno antiguo para actualizar hoursTracker
+        const turnoAntiguo: Turno = {
+          ...turno,
+          horaInicio: turno.horaInicio,
+          horaFin: turno.horaFin,
+          duracionMinutos: turno.duracionMinutos || (turno.horaFin - turno.horaInicio) * 60,
+        };
+
+        // Extender el turno
         turno.horaFin = slot.horaFin;
         turno.duracionMinutos = (turno.horaFin - turno.horaInicio) * 60;
+
+        // ¡CRÍTICO! Actualizar hoursTracker con el turno extendido
+        this.hoursTracker.updateTurno(empleado.uid, turnoAntiguo, turno);
+
+        console.log(`[ASIGNACIÓN] → EXTENDIENDO turno ${turno.fecha} ${turno.horaInicio}:00-${turno.horaFin}:00 (${turno.duracionMinutos/60}h, tipo: ${turno.tipo})`);
+
         turnoExtendido = true;
+        state.ultimoTurno = turno;
         break;
       }
     }
@@ -651,6 +691,8 @@ export class UnifiedSchedulingAlgorithm {
       this.turnos.push(nuevoTurno);
       this.turnosPorEmpleado.get(empleado.uid)!.push(nuevoTurno);
       this.hoursTracker.addTurno(empleado.uid, nuevoTurno);
+
+      console.log(`[ASIGNACIÓN] → NUEVO turno ${nuevoTurno.fecha} ${nuevoTurno.horaInicio}:00-${nuevoTurno.horaFin}:00 (${nuevoTurno.duracionMinutos/60}h, tipo: ${nuevoTurno.tipo})`);
 
       state.ultimoTurno = nuevoTurno;
     }
