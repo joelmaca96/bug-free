@@ -133,6 +133,13 @@ export class UnifiedSchedulingAlgorithm {
 
       const tiempoEjecucion = Date.now() - startTime;
 
+      console.log(`\n[ALGORITMO] Finalizado: ${this.turnos.length} turnos generados en ${tiempoEjecucion}ms`);
+      console.log(`[ALGORITMO] Resumen por empleado:`);
+      estadisticas.forEach(stat => {
+        const empleado = this.empleados.find(e => e.uid === stat.empleadoId);
+        console.log(`  - ${empleado?.datosPersonales.nombre}: ${stat.turnosAsignados} turnos, ${stat.horasTrabajadas}h (${stat.guardiasAsignadas} guardias, ${stat.festivosAsignados} festivos)`);
+      });
+
       return {
         turnos: this.turnos,
         conflictos,
@@ -190,39 +197,47 @@ export class UnifiedSchedulingAlgorithm {
         return isWithinInterval(dia, { start: inicioGuardia, end: finGuardia });
       }) || [];
 
-      // Si hay guardias, crear slots de guardia
-      guardias.forEach((guardia) => {
-        const horaInicio = parseInt(guardia.horaInicio.split(':')[0]);
-        const horaFin = parseInt(guardia.horaFin.split(':')[0]);
-
-        for (let hora = horaInicio; hora < horaFin; hora++) {
-          this.timeSlots.push({
-            fecha: fechaStr,
-            horaInicio: hora,
-            horaFin: hora + 1,
-            tipo: 'guardia',
-            trabajadoresNecesarios: this.farmacia.configuracion.trabajadoresMinimos,
-            asignaciones: [],
-          });
-        }
-      });
-
       // Si es festivo sin guardia, la farmacia está cerrada - no crear slots
       if (esFestivo && guardias.length === 0) {
         return;
       }
 
-      // Si no es festivo o tiene guardia, crear slots de horario habitual
-      if (guardias.length === 0) {
-        const horariosDelDia = this.farmacia.configuracion.horariosHabituales.filter(
-          (h) => h.dia === diaSemana
-        );
+      // Crear slots de horario habitual (si no es festivo sin guardia)
+      const horariosDelDia = this.farmacia.configuracion.horariosHabituales.filter(
+        (h) => h.dia === diaSemana
+      );
 
-        horariosDelDia.forEach((horario) => {
-          const horaInicio = parseInt(horario.inicio.split(':')[0]);
-          const horaFin = parseInt(horario.fin.split(':')[0]);
+      // Recopilar horas ocupadas por guardias para evitar solapamientos
+      const horasGuardia = new Set<number>();
+      guardias.forEach((guardia) => {
+        const horaInicio = parseInt(guardia.horaInicio.split(':')[0]);
+        const horaFin = parseInt(guardia.horaFin.split(':')[0]);
 
+        // Manejar guardias que cruzan medianoche
+        if (horaFin < horaInicio) {
+          // Guardia nocturna (ej: 22:00 a 6:00)
+          for (let hora = horaInicio; hora < 24; hora++) {
+            horasGuardia.add(hora);
+          }
+          for (let hora = 0; hora < horaFin; hora++) {
+            horasGuardia.add(hora);
+          }
+        } else {
+          // Guardia normal
           for (let hora = horaInicio; hora < horaFin; hora++) {
+            horasGuardia.add(hora);
+          }
+        }
+      });
+
+      // Crear slots de horario habitual (excluyendo horas de guardia)
+      horariosDelDia.forEach((horario) => {
+        const horaInicio = parseInt(horario.inicio.split(':')[0]);
+        const horaFin = parseInt(horario.fin.split(':')[0]);
+
+        for (let hora = horaInicio; hora < horaFin; hora++) {
+          // No crear slot si esta hora está ocupada por una guardia
+          if (!horasGuardia.has(hora)) {
             this.timeSlots.push({
               fecha: fechaStr,
               horaInicio: hora,
@@ -232,8 +247,51 @@ export class UnifiedSchedulingAlgorithm {
               asignaciones: [],
             });
           }
-        });
-      }
+        }
+      });
+
+      // Crear slots de guardia
+      guardias.forEach((guardia) => {
+        const horaInicio = parseInt(guardia.horaInicio.split(':')[0]);
+        const horaFin = parseInt(guardia.horaFin.split(':')[0]);
+
+        // Manejar guardias que cruzan medianoche
+        if (horaFin < horaInicio) {
+          // Guardia nocturna (ej: 22:00 a 6:00 del día siguiente)
+          for (let hora = horaInicio; hora < 24; hora++) {
+            this.timeSlots.push({
+              fecha: fechaStr,
+              horaInicio: hora,
+              horaFin: hora + 1,
+              tipo: 'guardia',
+              trabajadoresNecesarios: this.farmacia.configuracion.trabajadoresMinimos,
+              asignaciones: [],
+            });
+          }
+          for (let hora = 0; hora < horaFin; hora++) {
+            this.timeSlots.push({
+              fecha: fechaStr,
+              horaInicio: hora,
+              horaFin: hora + 1,
+              tipo: 'guardia',
+              trabajadoresNecesarios: this.farmacia.configuracion.trabajadoresMinimos,
+              asignaciones: [],
+            });
+          }
+        } else {
+          // Guardia normal
+          for (let hora = horaInicio; hora < horaFin; hora++) {
+            this.timeSlots.push({
+              fecha: fechaStr,
+              horaInicio: hora,
+              horaFin: hora + 1,
+              tipo: 'guardia',
+              trabajadoresNecesarios: this.farmacia.configuracion.trabajadoresMinimos,
+              asignaciones: [],
+            });
+          }
+        }
+      });
     });
   }
 
@@ -345,26 +403,39 @@ export class UnifiedSchedulingAlgorithm {
   private async fase1_turnosCriticos(): Promise<void> {
     console.log('[FASE 1] Asignando turnos críticos (guardias y festivos)...');
 
-    // Obtener slots críticos no asignados
-    const slotsCriticos = this.timeSlots.filter(
-      (slot) =>
-        (slot.tipo === 'guardia' || slot.tipo === 'festivo') &&
-        slot.asignaciones.length < slot.trabajadoresNecesarios
-    );
+    // Agrupar slots críticos por (fecha, tipo) para formar turnos completos
+    const turnosCriticosMap = new Map<string, TimeSlot[]>();
+
+    this.timeSlots
+      .filter(slot => (slot.tipo === 'guardia' || slot.tipo === 'festivo'))
+      .forEach(slot => {
+        const key = `${slot.fecha}-${slot.tipo}`;
+        if (!turnosCriticosMap.has(key)) {
+          turnosCriticosMap.set(key, []);
+        }
+        turnosCriticosMap.get(key)!.push(slot);
+      });
 
     // Ordenar empleados por equidad (menos guardias/festivos realizados)
     const empleadosOrdenados = this.ordenarEmpleadosPorEquidad();
 
     let asignacionesRealizadas = 0;
 
-    slotsCriticos.forEach((slot) => {
-      const necesarios = slot.trabajadoresNecesarios - slot.asignaciones.length;
+    // Procesar cada turno crítico completo
+    turnosCriticosMap.forEach((slots, key) => {
+      if (slots.length === 0) return;
 
-      for (let i = 0; i < necesarios; i++) {
-        const empleadoAsignado = this.asignarMejorEmpleadoASlot(
-          slot,
-          empleadosOrdenados
-        );
+      // Ordenar slots por hora para formar un turno contiguo
+      slots.sort((a, b) => a.horaInicio - b.horaInicio);
+
+      const trabajadoresNecesarios = slots[0].trabajadoresNecesarios;
+
+      console.log(`[FASE 1] Procesando turno crítico ${key}: ${slots.length} slots, necesita ${trabajadoresNecesarios} trabajadores`);
+
+      // Asignar empleados a TODO el turno completo
+      for (let i = 0; i < trabajadoresNecesarios; i++) {
+        // Buscar el mejor empleado para este turno completo
+        const empleadoAsignado = this.asignarEmpleadoATurnoCompleto(slots, empleadosOrdenados);
 
         if (empleadoAsignado) {
           asignacionesRealizadas++;
@@ -372,7 +443,116 @@ export class UnifiedSchedulingAlgorithm {
       }
     });
 
-    console.log(`[FASE 1] Completada. ${asignacionesRealizadas} asignaciones realizadas`);
+    console.log(`[FASE 1] Completada. ${asignacionesRealizadas} turnos críticos asignados`);
+  }
+
+  /**
+   * Asignar un empleado a un turno completo (todos los slots consecutivos)
+   */
+  private asignarEmpleadoATurnoCompleto(slots: TimeSlot[], empleadosCandidatos: Usuario[]): boolean {
+    if (slots.length === 0) return false;
+
+    // Ordenar slots por hora
+    const slotsOrdenados = [...slots].sort((a, b) => a.horaInicio - b.horaInicio);
+    const primerSlot = slotsOrdenados[0];
+    const ultimoSlot = slotsOrdenados[slotsOrdenados.length - 1];
+
+    // Crear turno temporal que representa el turno completo
+    const turnoCompleto: Turno = {
+      id: 'temp',
+      empleadoId: '', // Se asignará después
+      fecha: primerSlot.fecha,
+      horaInicio: primerSlot.horaInicio,
+      horaFin: ultimoSlot.horaFin,
+      duracionMinutos: (ultimoSlot.horaFin - primerSlot.horaInicio) * 60,
+      tipo: primerSlot.tipo,
+      estado: 'pendiente',
+    };
+
+    console.log(`[asignarEmpleadoATurnoCompleto] Intentando asignar turno: ${primerSlot.fecha} ${primerSlot.horaInicio}:00-${ultimoSlot.horaFin}:00 (${slotsOrdenados.length} slots, tipo: ${primerSlot.tipo})`);
+
+    // Intentar asignar a cada empleado candidato
+    for (const empleado of empleadosCandidatos) {
+      turnoCompleto.empleadoId = empleado.uid;
+
+      // Verificar disponibilidad en fecha
+      const state = this.empleadosState.get(empleado.uid);
+      if (state?.disponibilidad.get(primerSlot.fecha) === false) {
+        continue;
+      }
+
+      // Verificar que no esté ya asignado en ninguno de los slots
+      const yaAsignado = slotsOrdenados.some(slot => slot.asignaciones.includes(empleado.uid));
+      if (yaAsignado) {
+        continue;
+      }
+
+      // Obtener turnos del empleado
+      const turnosEmpleado = this.turnosPorEmpleado.get(empleado.uid) || [];
+
+      // Validar restricciones duras para el turno completo
+      const isValid = TurnoValidator.isValidAssignment(turnoCompleto, empleado, turnosEmpleado, this.config);
+      if (!isValid) {
+        console.log(`[asignarEmpleadoATurnoCompleto] → ${empleado.datosPersonales.nombre}: FALLA validación TurnoValidator`);
+        continue;
+      }
+
+      // Verificar límites de horas para el turno completo
+      const exceedsLimits = this.hoursTracker.wouldExceedLimits(empleado, turnoCompleto);
+      if (exceedsLimits) {
+        const horasEmpleado = this.hoursTracker.getHorasEmpleado(empleado.uid);
+        const horasDiarias = horasEmpleado?.diarias[turnoCompleto.fecha] || 0;
+        console.log(`[asignarEmpleadoATurnoCompleto] → ${empleado.datosPersonales.nombre}: FALLA límite de horas (tiene ${horasDiarias}h, turno es ${turnoCompleto.duracionMinutos/60}h, límite: ${this.config.restricciones.maxHorasDiarias}h)`);
+        continue;
+      }
+
+      console.log(`[asignarEmpleadoATurnoCompleto] ✓ Asignando empleado ${empleado.datosPersonales.nombre} a ${slotsOrdenados.length} slots`);
+      // Asignar el empleado a TODOS los slots del turno
+      slotsOrdenados.forEach(slot => {
+        this.asignarEmpleadoASlot(empleado, slot);
+      });
+      return true;
+    }
+
+    console.log(`[asignarEmpleadoATurnoCompleto] ✗ No se pudo asignar ningún empleado (validaciones fallaron)`);
+
+    // Si no se pudo con restricciones normales, intentar con horas extra
+    if (this.config.restricciones.permitirHorasExtra) {
+      for (const empleado of empleadosCandidatos) {
+        turnoCompleto.empleadoId = empleado.uid;
+
+        const state = this.empleadosState.get(empleado.uid);
+        if (state?.disponibilidad.get(primerSlot.fecha) === false) {
+          continue;
+        }
+
+        const yaAsignado = slotsOrdenados.some(slot => slot.asignaciones.includes(empleado.uid));
+        if (yaAsignado) {
+          continue;
+        }
+
+        const turnosEmpleado = this.turnosPorEmpleado.get(empleado.uid) || [];
+
+        // Solo validar descanso y turnos consecutivos, no horas
+        if (!TurnoValidator.hasMinimumRest(turnoCompleto, turnosEmpleado, this.config.restricciones.descansoMinimoEntreJornadas)) {
+          continue;
+        }
+
+        if (TurnoValidator.exceedsConsecutiveTurns(turnoCompleto, turnosEmpleado, this.config.restricciones.maxTurnosConsecutivos)) {
+          continue;
+        }
+
+        // Asignar con horas extra
+        console.log(`[asignarEmpleadoATurnoCompleto] ⚠ Asignando empleado ${empleado.datosPersonales.nombre} CON HORAS EXTRA a ${slotsOrdenados.length} slots`);
+        slotsOrdenados.forEach(slot => {
+          this.asignarEmpleadoASlot(empleado, slot);
+        });
+        return true;
+      }
+    }
+
+    console.log(`[asignarEmpleadoATurnoCompleto] ✗ No se pudo asignar ningún empleado (ni con horas extra)`);
+    return false;
   }
 
   /**
@@ -447,27 +627,46 @@ export class UnifiedSchedulingAlgorithm {
    * Asignar turnos para una semana completa
    */
   private asignarTurnosSemana(diasSemana: Date[]): void {
-    // Obtener slots laborales de la semana
-    const slotsLaborales = this.timeSlots.filter((slot) => {
-      const slotDate = parseISO(slot.fecha);
-      return (
-        slot.tipo === 'laboral' &&
-        diasSemana.some((dia) => format(dia, 'yyyy-MM-dd') === slot.fecha) &&
-        slot.asignaciones.length < slot.trabajadoresNecesarios
-      );
-    });
+    // Agrupar slots laborales por día para formar turnos completos
+    const turnosPorDia = new Map<string, TimeSlot[]>();
 
-    if (slotsLaborales.length === 0) return;
+    this.timeSlots
+      .filter(slot =>
+        slot.tipo === 'laboral' &&
+        diasSemana.some(dia => format(dia, 'yyyy-MM-dd') === slot.fecha)
+      )
+      .forEach(slot => {
+        const fecha = slot.fecha;
+        if (!turnosPorDia.has(fecha)) {
+          turnosPorDia.set(fecha, []);
+        }
+        turnosPorDia.get(fecha)!.push(slot);
+      });
+
+    if (turnosPorDia.size === 0) return;
 
     // Ordenar empleados por carga actual (menos horas trabajadas primero)
     const empleadosOrdenadosPorCarga = this.ordenarEmpleadosPorCarga();
 
-    // Asignar slots de forma round-robin ponderada
-    slotsLaborales.forEach((slot) => {
-      const necesarios = slot.trabajadoresNecesarios - slot.asignaciones.length;
+    // Procesar cada día de la semana
+    turnosPorDia.forEach((slots, fecha) => {
+      if (slots.length === 0) return;
 
-      for (let i = 0; i < necesarios; i++) {
-        this.asignarMejorEmpleadoASlot(slot, empleadosOrdenadosPorCarga);
+      // Ordenar slots por hora
+      slots.sort((a, b) => a.horaInicio - b.horaInicio);
+
+      const trabajadoresNecesarios = slots[0].trabajadoresNecesarios;
+
+      console.log(`[FASE 2] Procesando día laboral ${fecha}: ${slots.length} slots, necesita ${trabajadoresNecesarios} trabajadores`);
+
+      // Asignar empleados a TODO el día laboral completo
+      for (let i = 0; i < trabajadoresNecesarios; i++) {
+        // Buscar el mejor empleado para este día completo
+        const empleadoAsignado = this.asignarEmpleadoATurnoCompleto(slots, empleadosOrdenadosPorCarga);
+
+        if (!empleadoAsignado) {
+          console.warn(`[FASE 2] ✗ No se pudo asignar empleado para ${fecha}`);
+        }
       }
     });
   }
@@ -628,6 +827,7 @@ export class UnifiedSchedulingAlgorithm {
     for (const turno of turnosDelDia) {
       // Intentar extender turno existente si es contiguo
       if (turno.horaFin === slot.horaInicio && turno.tipo === slot.tipo) {
+        console.log(`[asignarEmpleadoASlot] → Extendiendo turno existente ${turno.horaInicio}:00-${turno.horaFin}:00 a ${turno.horaInicio}:00-${slot.horaFin}:00`);
         turno.horaFin = slot.horaFin;
         turno.duracionMinutos = (turno.horaFin - turno.horaInicio) * 60;
         turnoExtendido = true;
@@ -637,6 +837,7 @@ export class UnifiedSchedulingAlgorithm {
 
     if (!turnoExtendido) {
       // Crear nuevo turno
+      console.log(`[asignarEmpleadoASlot] → Creando NUEVO turno ${slot.fecha} ${slot.horaInicio}:00-${slot.horaFin}:00 (tipo: ${slot.tipo})`);
       const nuevoTurno: Turno = {
         id: generateId(),
         empleadoId: empleado.uid,

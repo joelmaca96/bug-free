@@ -50,7 +50,6 @@ import {
   deleteTurno,
   deleteTurnosByDateRange,
   createTurnosBatch,
-  subscribeTurnosByMonth,
 } from '@/services/calendariosRealtimeService';
 import { getFarmaciaById } from '@/services/farmaciasRealtimeService';
 import { getUsuariosByFarmacia } from '@/services/usuariosRealtimeService';
@@ -100,14 +99,38 @@ const CalendarioPage: React.FC = () => {
   };
 
   useEffect(() => {
-    console.log('[useEffect] Usuario cambió, cargando datos...', user?.uid, user?.farmaciaId);
     loadData();
   }, [user]);
 
+  // Detectar conflictos automáticamente cuando cambien los turnos, farmacia o empleados
+  useEffect(() => {
+    const detectConflicts = async () => {
+      if (!farmacia || empleados.length === 0 || turnos.length === 0 || !user?.uid || !user?.farmaciaId) {
+        return;
+      }
+
+      try {
+        const config = await getOrCreateConfiguracion(user.uid, user.farmaciaId);
+
+        const { ConflictDetector } = await import('@/utils/algorithm/conflictDetector');
+        const { HoursTracker } = await import('@/utils/algorithm/hoursTracker');
+
+        const hoursTracker = new HoursTracker();
+        const conflictDetector = new ConflictDetector(config, hoursTracker);
+
+        const conflictosDetectados = conflictDetector.detectAllConflicts(turnos, [], empleados);
+
+        setConflictos(conflictosDetectados);
+      } catch (err) {
+        console.error('Error detectando conflictos:', err);
+      }
+    };
+
+    detectConflicts();
+  }, [turnos, farmacia, empleados, user]);
+
   const loadData = async () => {
-    console.log('[loadData] Iniciando carga de datos...');
     if (!user?.farmaciaId || user.farmaciaId.trim() === '') {
-      console.log('[loadData] No hay farmaciaId, abortando');
       setError('No se ha asignado una farmacia a este usuario. Por favor, contacte con el administrador.');
       setLoading(false);
       return;
@@ -116,15 +139,11 @@ const CalendarioPage: React.FC = () => {
     try {
       setLoading(true);
 
-      console.log('[loadData] Cargando farmacia y empleados...');
       // Cargar datos de farmacia y empleados
       const [farmaciaData, empleadosData] = await Promise.all([
         getFarmaciaById(user.farmaciaId),
         getUsuariosByFarmacia(user.farmaciaId),
       ]);
-
-      console.log('[loadData] Farmacia:', farmaciaData);
-      console.log('[loadData] Empleados encontrados:', empleadosData.length);
 
       setFarmacia(farmaciaData);
       // Incluir empleados y admin/gestores que estén marcados como trabajadores
@@ -132,51 +151,20 @@ const CalendarioPage: React.FC = () => {
         emp.rol === 'empleado' ||
         ((emp.rol === 'admin' || emp.rol === 'gestor') && emp.incluirEnCalendario === true)
       );
-      console.log('[loadData] Empleados filtrados:', empleadosFiltrados.length);
       setEmpleados(empleadosFiltrados);
 
       // Cargar turnos del mes actual
-      console.log('[loadData] Cargando turnos del mes actual...');
       await loadTurnosForMonth(new Date());
-      console.log('[loadData] Carga de datos completada');
     } catch (err) {
-      console.error('[loadData] Error al cargar los datos:', err);
+      console.error('Error al cargar los datos:', err);
       setError('Error al cargar los datos');
     } finally {
       setLoading(false);
     }
   };
 
-  const detectarConflictos = async (turnosList: Turno[]) => {
-    if (!farmacia || empleados.length === 0) {
-      console.log('[detectarConflictos] No hay datos suficientes para detectar conflictos');
-      return;
-    }
-
-    try {
-      console.log('[detectarConflictos] Detectando conflictos para', turnosList.length, 'turnos');
-      const config = await getOrCreateConfiguracion(user!.uid, user!.farmaciaId!);
-
-      // Importar dinámicamente el ConflictDetector
-      const { ConflictDetector } = await import('@/utils/algorithm/conflictDetector');
-      const { HoursTracker } = await import('@/utils/algorithm/hoursTracker');
-
-      const hoursTracker = new HoursTracker();
-      const conflictDetector = new ConflictDetector(config, hoursTracker);
-
-      const conflictosDetectados = conflictDetector.detectAllConflicts(turnosList, [], empleados);
-
-      console.log('[detectarConflictos] Conflictos detectados:', conflictosDetectados.length);
-      setConflictos(conflictosDetectados);
-    } catch (err) {
-      console.error('[detectarConflictos] Error detectando conflictos:', err);
-    }
-  };
-
   const loadTurnosForMonth = async (date: Date, force: boolean = false) => {
-    console.log('[loadTurnosForMonth] Iniciando carga de turnos para fecha:', date);
     if (!user?.farmaciaId || user.farmaciaId.trim() === '') {
-      console.log('[loadTurnosForMonth] No hay farmaciaId, abortando');
       return;
     }
 
@@ -187,16 +175,12 @@ const CalendarioPage: React.FC = () => {
 
       // Evitar recargas duplicadas del mismo mes
       if (!force && currentMonthRef.current === monthKey) {
-        console.log('[loadTurnosForMonth] Mes ya cargado, saltando recarga:', monthKey);
         return;
       }
 
       currentMonthRef.current = monthKey;
-      console.log('[loadTurnosForMonth] Rango de fechas:', { farmaciaId: user.farmaciaId, inicio, fin });
 
       const turnosData = await getTurnosByDateRange(user.farmaciaId, inicio, fin);
-
-      console.log('[loadTurnosForMonth] Turnos recibidos de la BD:', turnosData.length);
 
       // Calcular duracionMinutos si no existe (para compatibilidad con turnos antiguos)
       const turnosConDuracion = turnosData.map(turno => {
@@ -207,13 +191,9 @@ const CalendarioPage: React.FC = () => {
         return turno;
       });
 
-      console.log('[loadTurnosForMonth] Turnos procesados:', turnosConDuracion.length);
       setTurnos(turnosConDuracion);
-
-      // Detectar conflictos para los turnos cargados
-      await detectarConflictos(turnosConDuracion);
     } catch (err) {
-      console.error('[loadTurnosForMonth] Error loading turnos:', err);
+      console.error('Error loading turnos:', err);
       setError('Error al cargar los turnos del calendario');
     }
   };
@@ -228,9 +208,6 @@ const CalendarioPage: React.FC = () => {
       setGenerating(true);
       setError(null);
 
-      console.log('Iniciando generación de calendario para el período:', generatePeriod);
-      console.log('Modo:', modoCompletar ? 'Completar existentes' : 'Limpiar y generar');
-
       // Cargar configuración
       const config = await getOrCreateConfiguracion(user.uid, user.farmaciaId);
 
@@ -241,16 +218,13 @@ const CalendarioPage: React.FC = () => {
 
       if (modoCompletar) {
         // Modo completar: cargar turnos existentes
-        console.log('Cargando turnos existentes...');
         turnosExistentes = await getTurnosByDateRange(
           user.farmaciaId,
           generatePeriod.inicio,
           generatePeriod.fin
         );
-        console.log(`Turnos existentes encontrados: ${turnosExistentes.length}`);
       } else {
         // Modo limpiar: eliminar turnos existentes en el período ANTES de generar nuevos
-        console.log('Eliminando turnos existentes...');
         await deleteTurnosByDateRange(
           user.farmaciaId,
           generatePeriod.inicio,
@@ -259,7 +233,6 @@ const CalendarioPage: React.FC = () => {
       }
 
       // Ejecutar algoritmo
-      console.log('Ejecutando algoritmo de asignación...');
       const resultado = await executeSchedulingAlgorithm(
         config,
         farmacia,
@@ -270,16 +243,12 @@ const CalendarioPage: React.FC = () => {
       );
 
       // Guardar nuevos turnos
-      console.log('Guardando nuevos turnos en la base de datos...');
       await createTurnosBatch(user.farmaciaId, user.empresaId, resultado.turnos);
-      console.log('Turnos guardados exitosamente');
 
       // Recargar turnos del mes visible actualmente en el calendario
-      console.log('Recargando turnos desde la base de datos...');
       const calendarApi = calendarRef.current?.getApi();
       const currentDate = calendarApi?.getDate() || new Date();
       await loadTurnosForMonth(currentDate, true); // Force reload
-      console.log('Turnos recargados');
 
       setConflictos(resultado.conflictos);
 
@@ -417,7 +386,6 @@ const CalendarioPage: React.FC = () => {
     if (!user?.farmaciaId || user.farmaciaId.trim() === '' || !user?.empresaId || !selectedTurno?.id) return;
 
     try {
-      console.log('Iniciando borrado de turno desde diálogo:', selectedTurno.id);
       await deleteTurno(user.farmaciaId, selectedTurno.id, selectedTurno.fecha);
 
       // Recargar turnos desde la base de datos para asegurar sincronización
@@ -444,8 +412,6 @@ const CalendarioPage: React.FC = () => {
       console.error('Turno no encontrado:', turnoId);
       return;
     }
-
-    console.log('Evento eliminado desde calendario (tecla Delete):', turnoId);
 
     try {
       await deleteTurno(user.farmaciaId, turnoId, turno.fecha);
@@ -481,7 +447,6 @@ const CalendarioPage: React.FC = () => {
       const inicio = format(startOfMonth(currentDate), 'yyyy-MM-dd');
       const fin = format(endOfMonth(currentDate), 'yyyy-MM-dd');
 
-      console.log('Limpiando todos los turnos del mes:', { inicio, fin });
       await deleteTurnosByDateRange(user.farmaciaId, inicio, fin);
 
       // Recargar turnos desde la base de datos
@@ -509,8 +474,6 @@ const CalendarioPage: React.FC = () => {
   };
 
   // Convertir turnos a eventos de FullCalendar
-  console.log('[RENDER] Convirtiendo turnos a eventos. Total turnos:', turnos.length);
-  console.log('[RENDER] Total empleados disponibles:', empleados.length);
   const events = turnos.map(turno => {
     const empleado = empleados.find(e => e.uid === turno.empleadoId);
     const turnoConflictos = conflictos.filter(c => c.turnoId === turno.id);
@@ -543,8 +506,6 @@ const CalendarioPage: React.FC = () => {
       }
     };
   });
-  console.log('[RENDER] Total eventos creados:', events.length);
-  console.log('[RENDER] Eventos:', events);
 
   if (loading) {
     return (
@@ -735,7 +696,7 @@ const CalendarioPage: React.FC = () => {
             right: 'dayGridMonth,timeGridWeek,timeGridDay',
           }}
           locale="es"
-          firstDay={0}
+          firstDay={1}
           editable={true}
           selectable={true}
           selectMirror={true}
@@ -749,7 +710,6 @@ const CalendarioPage: React.FC = () => {
           datesSet={(dateInfo) => {
             // Usar la fecha central de la vista para obtener el mes correcto
             const viewDate = dateInfo.view.currentStart;
-            console.log('[datesSet] Cambio de vista del calendario. Fecha de la vista:', viewDate);
             loadTurnosForMonth(viewDate);
           }}
           height="auto"
