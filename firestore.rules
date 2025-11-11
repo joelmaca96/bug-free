@@ -1,0 +1,132 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function getUserRole() {
+      return get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.rol;
+    }
+
+    function getUserEmpresaId() {
+      return get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.empresaId;
+    }
+
+    function getUserFarmaciaId() {
+      return get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.farmaciaId;
+    }
+
+    function isSuperuser() {
+      return isAuthenticated() && getUserRole() == 'superuser';
+    }
+
+    function isAdmin() {
+      return isAuthenticated() && getUserRole() == 'admin';
+    }
+
+    function isGestor() {
+      return isAuthenticated() && getUserRole() == 'gestor';
+    }
+
+    function isEmpleado() {
+      return isAuthenticated() && getUserRole() == 'empleado';
+    }
+
+    // Usuarios
+    match /usuarios/{userId} {
+      allow read: if isAuthenticated() && (
+        request.auth.uid == userId ||
+        isSuperuser() ||
+        (isAdmin() && getUserEmpresaId() == resource.data.empresaId) ||
+        (isGestor() && getUserFarmaciaId() == resource.data.farmaciaId)
+      );
+
+      allow write: if isAuthenticated() && (
+        request.auth.uid == userId ||
+        isSuperuser() ||
+        (isAdmin() && getUserEmpresaId() == request.resource.data.empresaId) ||
+        (isGestor() && getUserFarmaciaId() == request.resource.data.farmaciaId)
+      );
+    }
+
+    // Empresas
+    match /empresas/{empresaId} {
+      allow read: if isAuthenticated() && (
+        isSuperuser() ||
+        (isAdmin() && getUserEmpresaId() == empresaId)
+      );
+
+      allow write: if isAuthenticated() && (
+        isSuperuser() ||
+        (isAdmin() && getUserEmpresaId() == empresaId)
+      );
+    }
+
+    // Farmacias
+    match /farmacias/{farmaciaId} {
+      allow read: if isAuthenticated() && (
+        isSuperuser() ||
+        (isAdmin() && getUserEmpresaId() == resource.data.empresaId) ||
+        (isGestor() && getUserFarmaciaId() == farmaciaId) ||
+        (isEmpleado() && getUserFarmaciaId() == farmaciaId)
+      );
+
+      allow write: if isAuthenticated() && (
+        isSuperuser() ||
+        (isAdmin() && getUserEmpresaId() == request.resource.data.empresaId) ||
+        (isGestor() && getUserFarmaciaId() == farmaciaId)
+      );
+    }
+
+    // Configuraciones de Algoritmo
+    match /configuracionesAlgoritmo/{configId} {
+      allow read: if isAuthenticated() && (
+        isSuperuser() ||
+        (isAdmin() && getUserEmpresaId() == resource.data.empresaId) ||
+        (isGestor() && getUserFarmaciaId() == resource.data.farmaciaId) ||
+        (isEmpleado() && getUserFarmaciaId() == resource.data.farmaciaId)
+      );
+
+      allow write: if isAuthenticated() && (
+        isSuperuser() ||
+        (isAdmin() && getUserEmpresaId() == request.resource.data.empresaId) ||
+        (isGestor() && getUserFarmaciaId() == request.resource.data.farmaciaId)
+      );
+    }
+
+    // Calendarios y Turnos
+    match /calendarios/{calendarioId} {
+      allow read: if isAuthenticated() && (
+        isSuperuser() ||
+        (isAdmin() && getUserEmpresaId() == resource.data.empresaId) ||
+        (isGestor() && getUserFarmaciaId() == resource.data.farmaciaId) ||
+        (isEmpleado() && getUserFarmaciaId() == resource.data.farmaciaId)
+      );
+
+      allow write: if isAuthenticated() && (
+        isSuperuser() ||
+        (isAdmin() && getUserEmpresaId() == request.resource.data.empresaId) ||
+        (isGestor() && getUserFarmaciaId() == request.resource.data.farmaciaId)
+      );
+
+      // Turnos subcollection
+      match /turnos/{turnoId} {
+        allow read: if isAuthenticated() && (
+          isSuperuser() ||
+          (isAdmin() && getUserEmpresaId() == get(/databases/$(database)/documents/calendarios/$(calendarioId)).data.empresaId) ||
+          (isGestor() && getUserFarmaciaId() == get(/databases/$(database)/documents/calendarios/$(calendarioId)).data.farmaciaId) ||
+          (isEmpleado() && getUserFarmaciaId() == get(/databases/$(database)/documents/calendarios/$(calendarioId)).data.farmaciaId)
+        );
+
+        allow write: if isAuthenticated() && (
+          isSuperuser() ||
+          (isAdmin() && getUserEmpresaId() == get(/databases/$(database)/documents/calendarios/$(calendarioId)).data.empresaId) ||
+          (isGestor() && getUserFarmaciaId() == get(/databases/$(database)/documents/calendarios/$(calendarioId)).data.farmaciaId)
+        );
+      }
+    }
+  }
+}

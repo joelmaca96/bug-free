@@ -46,7 +46,7 @@
           },
           "turnos": {
             "$turnoId": {
-              ".validate": "newData.hasChildren(['empleadoId', 'fecha', 'horaInicio', 'horaFin', 'duracionMinutos', 'tipo', 'estado', 'createdAt', 'updatedAt']) && newData.child('empleadoId').isString() && newData.child('fecha').isString() && newData.child('horaInicio').isNumber() && newData.child('horaFin').isNumber() && newData.child('duracionMinutos').isNumber() && newData.child('tipo').val().matches(/^(laboral|guardia|festivo)$/) && newData.child('estado').val().matches(/^(confirmado|pendiente|conflicto)$/) && newData.child('createdAt').isNumber() && newData.child('updatedAt').isNumber() && newData.child('horaInicio').val() >= 0 && newData.child('horaInicio').val() <= 23 && newData.child('horaFin').val() >= 0 && newData.child('horaFin').val() <= 23 && newData.child('duracionMinutos').val() > 0"
+              ".validate": "newData.hasChildren(['empleadoId', 'fecha', 'horaInicio', 'horaFin', 'duracionMinutos', 'tipo', 'estado', 'createdAt', 'updatedAt']) && newData.child('empleadoId').isString() && newData.child('fecha').isString() && newData.child('horaInicio').isNumber() && newData.child('horaFin').isNumber() && newData.child('duracionMinutos').isNumber() && newData.child('tipo').val().matches(/^(laboral|guardia|festivo)$/) && newData.child('estado').val().matches(/^(confirmado|pendiente|conflicto)$/) && newData.child('createdAt').isNumber() && newData.child('updatedAt').isNumber() && newData.child('horaInicio').val() >= 0 && newData.child('horaInicio').val() <= 23 && newData.child('horaFin').val() >= 0 && newData.child('horaFin').val() <= 24 && newData.child('duracionMinutos').val() > 0"
             }
           }
         }

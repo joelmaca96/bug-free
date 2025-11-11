@@ -1,4 +1,4 @@
-# AgapitoDiSousa - Sistema de Gestión de Turnos para Farmacias
+# Apoteke - Sistema de Gestión de Turnos para Farmacias
 
 <div align="center">
 
@@ -46,7 +46,7 @@ Sistema completo de gestión de turnos con algoritmo inteligente de asignación 
 
 ## 📖 Descripción
 
-AgapitoDiSousa es una **aplicación web profesional** diseñada para automatizar completamente la gestión de turnos en farmacias, considerando restricciones laborales, guardias, festivos y cobertura mínima de personal.
+Apoteke es una **aplicación web profesional** diseñada para automatizar completamente la gestión de turnos en farmacias, considerando restricciones laborales, guardias, festivos y cobertura mínima de personal.
 
 ### 🎯 Objetivos Cumplidos
 
@@ -509,6 +509,6 @@ Este proyecto es privado y confidencial.
 
 <div align="center">
 
-**⭐ AgapitoDiSousa - Gestión Inteligente de Turnos ⭐**
+**⭐ Apoteke - Gestión Inteligente de Turnos ⭐**
 
 </div>

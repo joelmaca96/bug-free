@@ -25,6 +25,8 @@ export const getDefaultConfig = (userId: string, farmaciaId: string, empresaId?:
     maxTurnosConsecutivos: 6,
     maxHorasDiarias: 8,
     permitirHorasExtra: false,
+    estrategiaAsignacion: 'slots_individuales',
+    preferenciaDistribucion: 'igualdad_horas',
   },
   parametrosOptimizacion: {
     maxIteraciones: 1000,

@@ -41,24 +41,20 @@ export class TurnoValidator {
       const fechaTurno = parseISO(turno.fecha);
       const diffHoras = Math.abs(differenceInHours(fechaNueva, fechaTurno));
 
-      // Si los turnos están muy cerca en el tiempo
+      // CAMBIO: Si es el mismo día, permitir jornadas partidas (no validar descanso)
+      // El descanso mínimo solo se aplica entre DÍAS diferentes
+      if (turno.fecha === nuevoTurno.fecha) {
+        continue; // Permitir múltiples turnos en el mismo día (jornada partida)
+      }
+
+      // Si los turnos están en días diferentes pero cerca en el tiempo
       if (diffHoras <= 24) {
         // Calcular tiempo entre fin de un turno e inicio del otro
-        const finPrimero = turno.fecha < nuevoTurno.fecha ? turno.horaFin : nuevoTurno.horaFin;
-        const inicioSegundo = turno.fecha < nuevoTurno.fecha ? nuevoTurno.horaInicio : turno.horaInicio;
-
         let descanso: number;
-        if (turno.fecha === nuevoTurno.fecha) {
-          // Mismo día - el descanso es la diferencia entre fin e inicio
-          descanso = Math.abs(inicioSegundo - finPrimero);
+        if (turno.fecha < nuevoTurno.fecha) {
+          descanso = (24 - turno.horaFin) + nuevoTurno.horaInicio;
         } else {
-          // Días diferentes
-          const horasDiferenciaDias = diffHoras * 24;
-          if (turno.fecha < nuevoTurno.fecha) {
-            descanso = (24 - turno.horaFin) + nuevoTurno.horaInicio;
-          } else {
-            descanso = (24 - nuevoTurno.horaFin) + turno.horaInicio;
-          }
+          descanso = (24 - nuevoTurno.horaFin) + turno.horaInicio;
         }
 
         if (descanso < horasDescansoMinimo) {

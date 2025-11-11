@@ -111,6 +111,8 @@ export interface RestriccionesAlgoritmo {
   maxTurnosConsecutivos: number; // días
   maxHorasDiarias: number; // horas
   permitirHorasExtra: boolean;
+  estrategiaAsignacion: 'turno_completo' | 'slots_individuales'; // Estrategia de asignación de turnos
+  preferenciaDistribucion: 'igualdad_horas' | 'horas_seguidas'; // Preferencia al distribuir horas
 }
 
 export interface ParametrosOptimizacion {
@@ -152,6 +154,7 @@ export interface TimeSlot {
   tipo: TipoTurno;
   trabajadoresNecesarios: number;
   asignaciones: string[]; // Array de empleadoIds
+  guardiaId?: string; // ID único para agrupar slots de la misma guardia (incluyendo nocturnas)
 }
 
 // Resultado del algoritmo

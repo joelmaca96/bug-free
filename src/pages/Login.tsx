@@ -16,6 +16,7 @@ import GoogleIcon from '@mui/icons-material/Google';
 import AppleIcon from '@mui/icons-material/Apple';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate, Link } from 'react-router-dom';
+import Logo from '@/components/Logo';
 
 const Login: React.FC = () => {
   const [email, setEmail] = useState('');
@@ -104,6 +105,9 @@ const Login: React.FC = () => {
               mb: 3,
             }}
           >
+            <Box sx={{ display: 'flex', justifyContent: 'center', mb: 2 }}>
+              <Logo variant="full" height={80} />
+            </Box>
             <Typography
               variant="h3"
               component="h1"

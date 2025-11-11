@@ -30,6 +30,7 @@ import SupervisorAccountIcon from '@mui/icons-material/SupervisorAccount';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import ThemeToggle from './ThemeToggle';
+import Logo from './Logo';
 
 const drawerWidth = 260;
 
@@ -127,9 +128,12 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   const drawer = (
     <div>
       <Toolbar>
-        <Typography variant="h6" noWrap component="div" sx={{ fontSize: { xs: '1.1rem', sm: '1.25rem' } }}>
-          Apoteke
-        </Typography>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, width: '100%' }}>
+          <Logo variant="icon" height={32} />
+          <Typography variant="h6" noWrap component="div" sx={{ fontSize: { xs: '1.1rem', sm: '1.25rem' } }}>
+            Apoteke
+          </Typography>
+        </Box>
       </Toolbar>
       <Divider />
       <List>
