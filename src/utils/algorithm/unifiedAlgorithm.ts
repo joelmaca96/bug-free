@@ -1071,13 +1071,13 @@ export class UnifiedSchedulingAlgorithm {
     // Verificar disponibilidad en fecha
     const state = this.empleadosState.get(empleado.uid);
     if (state?.disponibilidad.get(slot.fecha) === false) {
-      console.log(`[VALIDACIÓN] ✗ Empleado ${empleado.datosPersonales.nombre} no disponible en ${slot.fecha}`);
+      console.log(`[VALIDACIÓN] ✗ Empleado ${empleado.nombre} no disponible en ${slot.fecha}`);
       return false;
     }
 
     // Verificar que no esté ya asignado
     if (slot.asignaciones.includes(empleado.uid)) {
-      console.log(`[VALIDACIÓN] ✗ Empleado ${empleado.datosPersonales.nombre} ya asignado a slot ${slot.fecha} ${slot.horaInicio}:00`);
+      console.log(`[VALIDACIÓN] ✗ Empleado ${empleado.nombre} ya asignado a slot ${slot.fecha} ${slot.horaInicio}:00`);
       return false;
     }
 
@@ -1106,7 +1106,7 @@ export class UnifiedSchedulingAlgorithm {
       estado: 'pendiente',
     };
 
-    console.log(`[VALIDACIÓN] Validando para ${empleado.datosPersonales.nombre}: ${slot.fecha} ${turnoTemporal.horaInicio}:00-${turnoTemporal.horaFin}:00 (${duracionFinal/60}h, ${turnoExtendible ? 'EXTENSIÓN' : 'NUEVO'})`);
+    console.log(`[VALIDACIÓN] Validando para ${empleado.nombre}: ${slot.fecha} ${turnoTemporal.horaInicio}:00-${turnoTemporal.horaFin}:00 (${duracionFinal/60}h, ${turnoExtendible ? 'EXTENSIÓN' : 'NUEVO'})`);
 
     // Obtener turnos del empleado (sin el que vamos a extender si existe)
     const turnosEmpleado = turnoExtendible
