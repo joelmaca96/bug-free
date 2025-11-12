@@ -16,6 +16,7 @@ const {onCall, HttpsError} = require('firebase-functions/v2/https');
 const admin = require('firebase-admin');
 const nodemailer = require('nodemailer');
 const cors = require('cors');
+const axios = require('axios');
 
 admin.initializeApp();
 
@@ -340,5 +341,309 @@ exports.deleteUserAuth = onCall({
   } catch (error) {
     console.error('Error deleting user:', error);
     throw new HttpsError('internal', 'Error al eliminar el usuario');
+  }
+});
+
+/**
+ * Callable function para generar horarios usando OR-Tools (Cloud Run)
+ * Orquesta la llamada al servicio Python de generación de horarios
+ */
+exports.generarHorarios = onCall({
+  cors: [
+    'http://localhost:5173',
+    'http://localhost:3000',
+    'https://agapitodisousa.com',
+    'https://kroma-ai.web.app',
+    'https://kroma-ai.firebaseapp.com'
+  ],
+  memory: '2GiB',
+  timeoutSeconds: 540
+}, async (request) => {
+  // Verificar autenticación
+  if (!request.auth) {
+    throw new HttpsError(
+      'unauthenticated',
+      'Usuario debe estar autenticado'
+    );
+  }
+
+  const data = request.data;
+  const { empresaId, mes, empleadosIds, opciones } = data;
+
+  if (!empresaId || !mes) {
+    throw new HttpsError('invalid-argument', 'empresaId y mes son requeridos');
+  }
+
+  try {
+    console.log(`[generarHorarios] Iniciando para empresa ${empresaId}, mes ${mes}`);
+
+    // Verificar permisos del usuario
+    const callerDoc = await admin.firestore().doc(`usuarios/${request.auth.uid}`).get();
+    if (!callerDoc.exists) {
+      throw new HttpsError('not-found', 'Usuario no encontrado');
+    }
+
+    const caller = callerDoc.data();
+
+    // Solo admin, gestor y superuser pueden generar horarios
+    if (!['superuser', 'admin', 'gestor'].includes(caller.rol)) {
+      throw new HttpsError(
+        'permission-denied',
+        'No tienes permisos para generar horarios'
+      );
+    }
+
+    // Verificar que el usuario pertenece a la empresa
+    if (caller.rol !== 'superuser' && caller.empresaId !== empresaId) {
+      throw new HttpsError(
+        'permission-denied',
+        'No tienes acceso a esta empresa'
+      );
+    }
+
+    // URL del servicio Cloud Run
+    const schedulerServiceUrl = process.env.SCHEDULER_SERVICE_URL || 'http://localhost:8080';
+
+    // Llamar al servicio de generación
+    const response = await axios.post(
+      `${schedulerServiceUrl}/generar-horarios`,
+      {
+        empresaId,
+        mes,
+        empleadosIds,
+        opciones: opciones || {}
+      },
+      {
+        timeout: 500000, // 500 segundos
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      }
+    );
+
+    console.log(`[generarHorarios] Respuesta recibida: ${response.data.estado}`);
+
+    // Retornar resultado
+    return {
+      success: response.data.estado === 'success',
+      horarioId: mes,
+      metricas: response.data.metricas,
+      estado: response.data.estado,
+      mensaje: response.data.mensaje,
+      sugerencias: response.data.sugerencias || []
+    };
+
+  } catch (error) {
+    console.error('[generarHorarios] Error:', error);
+
+    if (error.response) {
+      // Error del servicio Cloud Run
+      throw new HttpsError(
+        'internal',
+        error.response.data.error || 'Error al generar horarios',
+        { detalle: error.response.data.detalle }
+      );
+    } else if (error.code) {
+      // Error de Firebase
+      throw error;
+    } else {
+      // Error de red u otro
+      throw new HttpsError('internal', 'Error al conectar con el servicio de generación');
+    }
+  }
+});
+
+/**
+ * Callable function para ajustar horarios manualmente
+ */
+exports.ajustarHorario = onCall({
+  cors: [
+    'http://localhost:5173',
+    'http://localhost:3000',
+    'https://agapitodisousa.com',
+    'https://kroma-ai.web.app',
+    'https://kroma-ai.firebaseapp.com'
+  ],
+  memory: '2GiB',
+  timeoutSeconds: 540
+}, async (request) => {
+  // Verificar autenticación
+  if (!request.auth) {
+    throw new HttpsError(
+      'unauthenticated',
+      'Usuario debe estar autenticado'
+    );
+  }
+
+  const data = request.data;
+  const { empresaId, mes, ajustes } = data;
+
+  if (!empresaId || !mes || !ajustes) {
+    throw new HttpsError(
+      'invalid-argument',
+      'empresaId, mes y ajustes son requeridos'
+    );
+  }
+
+  try {
+    console.log(`[ajustarHorario] Iniciando para empresa ${empresaId}, mes ${mes}`);
+
+    // Verificar permisos del usuario
+    const callerDoc = await admin.firestore().doc(`usuarios/${request.auth.uid}`).get();
+    if (!callerDoc.exists) {
+      throw new HttpsError('not-found', 'Usuario no encontrado');
+    }
+
+    const caller = callerDoc.data();
+
+    // Solo admin, gestor y superuser pueden ajustar horarios
+    if (!['superuser', 'admin', 'gestor'].includes(caller.rol)) {
+      throw new HttpsError(
+        'permission-denied',
+        'No tienes permisos para ajustar horarios'
+      );
+    }
+
+    // Verificar que el usuario pertenece a la empresa
+    if (caller.rol !== 'superuser' && caller.empresaId !== empresaId) {
+      throw new HttpsError(
+        'permission-denied',
+        'No tienes acceso a esta empresa'
+      );
+    }
+
+    // URL del servicio Cloud Run
+    const schedulerServiceUrl = process.env.SCHEDULER_SERVICE_URL || 'http://localhost:8080';
+
+    // Llamar al servicio de ajuste
+    const response = await axios.post(
+      `${schedulerServiceUrl}/ajustar-horarios`,
+      {
+        empresaId,
+        mes,
+        ajustes
+      },
+      {
+        timeout: 500000,
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      }
+    );
+
+    console.log(`[ajustarHorario] Respuesta recibida: ${response.data.estado}`);
+
+    // Retornar resultado
+    return {
+      success: response.data.estado === 'success',
+      horarioId: mes,
+      metricas: response.data.metricas,
+      estado: response.data.estado,
+      mensaje: response.data.mensaje
+    };
+
+  } catch (error) {
+    console.error('[ajustarHorario] Error:', error);
+
+    if (error.response) {
+      throw new HttpsError(
+        'internal',
+        error.response.data.error || 'Error al ajustar horarios',
+        { detalle: error.response.data.detalle }
+      );
+    } else if (error.code) {
+      throw error;
+    } else {
+      throw new HttpsError('internal', 'Error al conectar con el servicio de ajuste');
+    }
+  }
+});
+
+/**
+ * Callable function para validar configuración
+ */
+exports.validarConfiguracion = onCall({
+  cors: [
+    'http://localhost:5173',
+    'http://localhost:3000',
+    'https://agapitodisousa.com',
+    'https://kroma-ai.web.app',
+    'https://kroma-ai.firebaseapp.com'
+  ]
+}, async (request) => {
+  // Verificar autenticación
+  if (!request.auth) {
+    throw new HttpsError(
+      'unauthenticated',
+      'Usuario debe estar autenticado'
+    );
+  }
+
+  const data = request.data;
+  const { empresaId, mes } = data;
+
+  if (!empresaId || !mes) {
+    throw new HttpsError('invalid-argument', 'empresaId y mes son requeridos');
+  }
+
+  try {
+    console.log(`[validarConfiguracion] Validando empresa ${empresaId}, mes ${mes}`);
+
+    // Verificar permisos del usuario
+    const callerDoc = await admin.firestore().doc(`usuarios/${request.auth.uid}`).get();
+    if (!callerDoc.exists) {
+      throw new HttpsError('not-found', 'Usuario no encontrado');
+    }
+
+    const caller = callerDoc.data();
+
+    // Solo admin, gestor y superuser pueden validar
+    if (!['superuser', 'admin', 'gestor'].includes(caller.rol)) {
+      throw new HttpsError(
+        'permission-denied',
+        'No tienes permisos para validar configuración'
+      );
+    }
+
+    // URL del servicio Cloud Run
+    const schedulerServiceUrl = process.env.SCHEDULER_SERVICE_URL || 'http://localhost:8080';
+
+    // Llamar al servicio de validación
+    const response = await axios.post(
+      `${schedulerServiceUrl}/validar-configuracion`,
+      {
+        empresaId,
+        mes
+      },
+      {
+        timeout: 30000,
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      }
+    );
+
+    console.log(`[validarConfiguracion] Resultado: ${response.data.factible ? 'factible' : 'no factible'}`);
+
+    return {
+      factible: response.data.factible,
+      errors: response.data.errors || [],
+      warnings: response.data.warnings || []
+    };
+
+  } catch (error) {
+    console.error('[validarConfiguracion] Error:', error);
+
+    if (error.response) {
+      throw new HttpsError(
+        'internal',
+        error.response.data.error || 'Error al validar configuración',
+        { detalle: error.response.data.detalle }
+      );
+    } else if (error.code) {
+      throw error;
+    } else {
+      throw new HttpsError('internal', 'Error al conectar con el servicio de validación');
+    }
   }
 });
