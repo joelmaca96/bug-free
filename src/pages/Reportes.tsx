@@ -30,7 +30,7 @@ import DownloadIcon from '@mui/icons-material/Download';
 import { format, startOfMonth, endOfMonth } from 'date-fns';
 import { useAuth } from '@/contexts/AuthContext';
 import { Usuario, Turno, Farmacia } from '@/types';
-import { getTurnosByDateRange } from '@/services/turnosService';
+import { getTurnosByDateRange } from '@/services/calendariosRealtimeService';
 import { getFarmaciaById } from '@/services/farmaciasRealtimeService';
 import { getUsuariosByFarmacia } from '@/services/usuariosRealtimeService';
 import {
