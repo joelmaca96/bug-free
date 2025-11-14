@@ -334,78 +334,10 @@ export const validarConfiguracionesCobertura = (
   };
 };
 
-// Helper para verificar si una configuración cubre un horario habitual
-const configuracionCubreHorario = (
-  config: ConfiguracionCobertura,
-  horario: HorarioHabitual
-): boolean => {
-  // Verificar si el día está incluido
-  if (!config.diasSemana.includes(horario.dia)) {
-    return false;
-  }
-
-  // Convertir horario.inicio y horario.fin (HH:mm) a números
-  const horarioInicioHora = parseInt(horario.inicio.split(':')[0]);
-  const horarioFinHora = parseInt(horario.fin.split(':')[0]);
-  const horarioFinMinutos = parseInt(horario.fin.split(':')[1]);
-
-  // Ajustar horaFin si hay minutos (por ejemplo, 13:30 -> 14)
-  const horarioFinAjustado =
-    horarioFinMinutos > 0 ? horarioFinHora + 1 : horarioFinHora;
-
-  // Verificar si el horario está completamente cubierto
-  return (
-    config.horaInicio <= horarioInicioHora &&
-    config.horaFin >= horarioFinAjustado
-  );
-};
-
-// Validar que todas las franjas horarias habituales estén cubiertas
-export const validarCoberturaTotalDeHorarios = (
-  configuraciones: ConfiguracionCobertura[],
-  horariosHabituales: HorarioHabitual[]
-): ValidacionHorario => {
-  const errores: string[] = [];
-
-  if (configuraciones.length === 0) {
-    // Si no hay configuraciones específicas, se usa el valor global
-    return { valido: true, errores: [] };
-  }
-
-  const nombresDias = [
-    'Domingo',
-    'Lunes',
-    'Martes',
-    'Miércoles',
-    'Jueves',
-    'Viernes',
-    'Sábado',
-  ];
-
-  // Verificar cada horario habitual
-  horariosHabituales.forEach((horario) => {
-    const estaCubierto = configuraciones.some((config) =>
-      configuracionCubreHorario(config, horario)
-    );
-
-    if (!estaCubierto) {
-      errores.push(
-        `Falta configuración de cobertura para ${nombresDias[horario.dia]} ${horario.inicio}-${horario.fin}`
-      );
-    }
-  });
-
-  return {
-    valido: errores.length === 0,
-    errores,
-  };
-};
-
 // Validar configuración completa de farmacia
 export interface ValidacionConfiguracion {
   valido: boolean;
   errores: {
-    horariosHabituales: string[];
     jornadasGuardia: string[];
     festivosRegionales: string[];
     trabajadoresMinimos: string[];
@@ -414,15 +346,11 @@ export interface ValidacionConfiguracion {
 }
 
 export const validarConfiguracionFarmacia = (config: {
-  horariosHabituales: HorarioHabitual[];
   jornadasGuardia: JornadaGuardia[];
   festivosRegionales: string[];
   trabajadoresMinimos: number;
-  configuracionesCobertura?: ConfiguracionCobertura[];
+  configuracionesCobertura: ConfiguracionCobertura[];
 }): ValidacionConfiguracion => {
-  const validacionHorarios = validarTodosHorariosHabituales(
-    config.horariosHabituales
-  );
   const validacionGuardias = validarJornadasGuardia(config.jornadasGuardia);
   const validacionFestivos = validarFestivosRegionales(
     config.festivosRegionales
@@ -431,30 +359,20 @@ export const validarConfiguracionFarmacia = (config: {
     config.trabajadoresMinimos
   );
   const validacionConfiguraciones = validarConfiguracionesCobertura(
-    config.configuracionesCobertura || []
-  );
-  const validacionCoberturaTotalConfig = validarCoberturaTotalDeHorarios(
-    config.configuracionesCobertura || [],
-    config.horariosHabituales
+    config.configuracionesCobertura
   );
 
   return {
     valido:
-      validacionHorarios.valido &&
       validacionGuardias.valido &&
       validacionFestivos.valido &&
       validacionTrabajadores.valido &&
-      validacionConfiguraciones.valido &&
-      validacionCoberturaTotalConfig.valido,
+      validacionConfiguraciones.valido,
     errores: {
-      horariosHabituales: validacionHorarios.errores,
       jornadasGuardia: validacionGuardias.errores,
       festivosRegionales: validacionFestivos.errores,
       trabajadoresMinimos: validacionTrabajadores.errores,
-      configuracionesCobertura: [
-        ...validacionConfiguraciones.errores,
-        ...validacionCoberturaTotalConfig.errores,
-      ],
+      configuracionesCobertura: validacionConfiguraciones.errores,
     },
   };
 };

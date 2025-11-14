@@ -42,6 +42,11 @@ export interface Empresa {
 }
 
 // Configuración de Farmacia
+
+/**
+ * @deprecated Use ConfiguracionCobertura instead
+ * Mantenido solo para compatibilidad con datos antiguos
+ */
 export interface HorarioHabitual {
   dia: number; // 0-6 (domingo-sábado)
   inicio: string; // HH:mm
@@ -65,11 +70,11 @@ export interface ConfiguracionCobertura {
 }
 
 export interface ConfiguracionFarmacia {
-  horariosHabituales: HorarioHabitual[];
+  horariosHabituales?: HorarioHabitual[]; // DEPRECADO: Mantenido por compatibilidad
   jornadasGuardia: JornadaGuardia[];
   festivosRegionales: string[]; // Array de fechas ISO
   trabajadoresMinimos: number; // DEPRECADO: Mantener por compatibilidad con datos existentes
-  configuracionesCobertura?: ConfiguracionCobertura[]; // NUEVO: Configuración de cobertura por franjas horarias
+  configuracionesCobertura: ConfiguracionCobertura[]; // Configuración de horarios y cobertura
 }
 
 // Farmacia

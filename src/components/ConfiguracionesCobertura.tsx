@@ -180,12 +180,11 @@ const ConfiguracionesCobertura: React.FC<ConfiguracionesCoberturaProps> = ({
     <Box>
       <Box sx={{ mb: 3 }}>
         <Typography variant="h6" gutterBottom>
-          Configuración de Cobertura por Franjas Horarias
+          Horarios de la Farmacia
         </Typography>
         <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-          Defina el número mínimo de empleados necesarios para diferentes días y
-          horarios. Esto permite ajustar la cobertura según la demanda (por
-          ejemplo, más personal en horas pico).
+          Configure los días y horarios de apertura de la farmacia, junto con el
+          número mínimo de empleados necesarios para cada franja horaria.
         </Typography>
 
         <Button

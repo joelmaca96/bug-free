@@ -229,9 +229,9 @@ export class UnifiedSchedulingAlgorithm {
         return;
       }
 
-      // Crear slots de horario habitual (si no es festivo sin guardia)
-      const horariosDelDia = this.farmacia.configuracion.horariosHabituales.filter(
-        (h) => h.dia === diaSemana
+      // Obtener configuraciones de cobertura para este día
+      const configuracionesDelDia = this.farmacia.configuracion.configuracionesCobertura.filter(
+        (config) => config.diasSemana.includes(diaSemana)
       );
 
       // Recopilar horas ocupadas por guardias EN ESTE DÍA ESPECÍFICO para evitar solapamientos
@@ -275,12 +275,9 @@ export class UnifiedSchedulingAlgorithm {
         }
       });
 
-      // Crear slots de horario habitual (excluyendo horas de guardia)
-      horariosDelDia.forEach((horario) => {
-        const horaInicio = parseInt(horario.inicio.split(':')[0]);
-        const horaFin = parseInt(horario.fin.split(':')[0]);
-
-        for (let hora = horaInicio; hora < horaFin; hora++) {
+      // Crear slots basados en configuraciones de cobertura (excluyendo horas de guardia)
+      configuracionesDelDia.forEach((config) => {
+        for (let hora = config.horaInicio; hora < config.horaFin; hora++) {
           // No crear slot si esta hora está ocupada por una guardia
           if (!horasGuardia.has(hora)) {
             this.timeSlots.push({
@@ -288,7 +285,7 @@ export class UnifiedSchedulingAlgorithm {
               horaInicio: hora,
               horaFin: hora + 1,
               tipo: esFestivo ? 'festivo' : 'laboral',
-              trabajadoresNecesarios: this.obtenerTrabajadoresNecesarios(dia, hora),
+              trabajadoresNecesarios: config.trabajadoresMinimos,
               asignaciones: [],
             });
           }

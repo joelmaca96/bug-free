@@ -144,16 +144,16 @@ class FirebaseClient:
             # Combinar configuraciones
             config_farmacia = farmacia_data.get('configuracion', {})
 
-            # Generar turnos desde horarios habituales
-            turnos = self._generar_turnos_desde_horarios(config_farmacia.get('horariosHabituales', []))
+            # Obtener configuraciones de cobertura por franjas horarias
+            configuraciones_cobertura = config_farmacia.get('configuracionesCobertura', [])
+
+            # Generar turnos desde configuraciones de cobertura
+            turnos = self._generar_turnos_desde_cobertura(configuraciones_cobertura)
 
             # Generar turnos de guardia desde jornadasGuardia
             jornadas_guardia = config_farmacia.get('jornadasGuardia', [])
             turnos_guardia = self._generar_turnos_guardia(jornadas_guardia)
             turnos.update(turnos_guardia)
-
-            # Obtener configuraciones de cobertura por franjas horarias
-            configuraciones_cobertura = config_farmacia.get('configuracionesCobertura', [])
 
             # Construir configuración completa
             config_data = {
@@ -175,8 +175,97 @@ class FirebaseClient:
             logger.error(f"Error al leer configuración: {e}")
             raise
 
+    def _generar_turnos_desde_cobertura(self, configuraciones_cobertura: list) -> Dict[str, Any]:
+        """
+        Genera definiciones de turnos desde configuraciones de cobertura.
+        Divide turnos largos en múltiples turnos de duración razonable (4-6 horas).
+
+        Args:
+            configuraciones_cobertura: Lista de configuraciones de cobertura
+                Ejemplo: [{'id': 'x', 'diasSemana': [1,2,3,4,5], 'horaInicio': 9, 'horaFin': 14, 'trabajadoresMinimos': 2}, ...]
+                donde diasSemana: 0=Domingo, 1=Lunes, ..., 6=Sábado
+
+        Returns:
+            Diccionario de turnos con información completa
+        """
+        turnos = {}
+        turno_counter = 0
+
+        for config in configuraciones_cobertura:
+            hora_inicio = config.get('horaInicio', 9)
+            hora_fin = config.get('horaFin', 17)
+            dias_semana = config.get('diasSemana', [1, 2, 3, 4, 5])
+
+            # Calcular duración en horas
+            duracion_horas = hora_fin - hora_inicio
+
+            # Convertir días de semana de formato 0=Domingo a formato ISO (1=Lunes)
+            # Python weekday: 0=Lunes, 6=Domingo
+            # Nuestra config: 0=Domingo, 1=Lunes, ..., 6=Sábado
+            # OR-Tools: 1=Lunes, 7=Domingo (ISO weekday)
+            dias_iso = []
+            for dia in dias_semana:
+                if dia == 0:  # Domingo
+                    dias_iso.append(7)
+                else:  # Lunes (1) a Sábado (6)
+                    dias_iso.append(dia)
+
+            # Determinar nombre de días para el turno
+            nombres_dias = self._obtener_nombres_dias(dias_iso)
+
+            # Formatear horas
+            hora_inicio_str = f"{hora_inicio:02d}:00"
+            hora_fin_str = f"{hora_fin:02d}:00"
+
+            # Si el turno es corto (<=6 horas), crear un solo turno
+            if duracion_horas <= 6:
+                turno_counter += 1
+                turno_id = f"turno_{turno_counter}"
+                turnos[turno_id] = {
+                    'id': turno_id,
+                    'nombre': f"{nombres_dias} {hora_inicio_str}-{hora_fin_str}",
+                    'horaInicio': hora_inicio_str,
+                    'horaFin': hora_fin_str,
+                    'duracionHoras': duracion_horas,
+                    'tipo': 'laboral',
+                    'diasSemanaValidos': dias_iso
+                }
+            else:
+                # Dividir en turnos más pequeños (mañana/tarde)
+                mitad = hora_inicio + (duracion_horas // 2)
+
+                # Turno de mañana
+                turno_counter += 1
+                turno_id_manana = f"turno_{turno_counter}"
+                turnos[turno_id_manana] = {
+                    'id': turno_id_manana,
+                    'nombre': f"{nombres_dias} Mañana {hora_inicio_str}-{mitad:02d}:00",
+                    'horaInicio': hora_inicio_str,
+                    'horaFin': f"{mitad:02d}:00",
+                    'duracionHoras': mitad - hora_inicio,
+                    'tipo': 'laboral',
+                    'diasSemanaValidos': dias_iso
+                }
+
+                # Turno de tarde
+                turno_counter += 1
+                turno_id_tarde = f"turno_{turno_counter}"
+                turnos[turno_id_tarde] = {
+                    'id': turno_id_tarde,
+                    'nombre': f"{nombres_dias} Tarde {mitad:02d}:00-{hora_fin_str}",
+                    'horaInicio': f"{mitad:02d}:00",
+                    'horaFin': hora_fin_str,
+                    'duracionHoras': hora_fin - mitad,
+                    'tipo': 'laboral',
+                    'diasSemanaValidos': dias_iso
+                }
+
+        logger.info(f"Generados {len(turnos)} turnos desde configuraciones de cobertura")
+        return turnos
+
     def _generar_turnos_desde_horarios(self, horarios_habituales: list) -> Dict[str, Any]:
         """
+        DEPRECADO: Usa _generar_turnos_desde_cobertura en su lugar.
         Genera definiciones de turnos desde los horarios habituales.
         Divide turnos largos en múltiples turnos de duración razonable (4-6 horas).
 

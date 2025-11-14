@@ -17,13 +17,11 @@ import ScheduleIcon from '@mui/icons-material/Schedule';
 import LocalHospitalIcon from '@mui/icons-material/LocalHospital';
 import EventIcon from '@mui/icons-material/Event';
 import PeopleIcon from '@mui/icons-material/People';
-import GroupsIcon from '@mui/icons-material/Groups';
 import { useAuth } from '@/contexts/AuthContext';
 import { getFarmaciaById, updateFarmacia } from '@/services/farmaciasRealtimeService';
-import { Farmacia, HorarioHabitual, JornadaGuardia, ConfiguracionCobertura } from '@/types';
+import { Farmacia, JornadaGuardia, ConfiguracionCobertura } from '@/types';
 import { validarConfiguracionFarmacia } from '@/utils/scheduleValidations';
 import { migrarSiEsNecesario } from '@/utils/migrateGuardias';
-import HorariosHabituales from '@/components/HorariosHabituales';
 import JornadasGuardia from '@/components/JornadasGuardia';
 import FestivosRegionales from '@/components/FestivosRegionales';
 import ConfiguracionesCobertura from '@/components/ConfiguracionesCobertura';
@@ -53,7 +51,6 @@ const ConfiguracionFarmacia: React.FC = () => {
   });
 
   const [configuracion, setConfiguracion] = useState({
-    horariosHabituales: [] as HorarioHabitual[],
     jornadasGuardia: [] as JornadaGuardia[],
     festivosRegionales: [] as string[],
     trabajadoresMinimos: 1,
@@ -107,7 +104,6 @@ const ConfiguracionFarmacia: React.FC = () => {
 
       if (!validacion.valido) {
         const todosErrores = [
-          ...validacion.errores.horariosHabituales,
           ...validacion.errores.jornadasGuardia,
           ...validacion.errores.festivosRegionales,
           ...validacion.errores.trabajadoresMinimos,
@@ -133,13 +129,6 @@ const ConfiguracionFarmacia: React.FC = () => {
     } finally {
       setSaving(false);
     }
-  };
-
-  const handleHorariosChange = (horarios: HorarioHabitual[]) => {
-    setConfiguracion((prev) => ({
-      ...prev,
-      horariosHabituales: horarios,
-    }));
   };
 
   const handleGuardiasChange = (guardias: JornadaGuardia[]) => {
@@ -225,7 +214,7 @@ const ConfiguracionFarmacia: React.FC = () => {
         >
           <Tab
             icon={<ScheduleIcon />}
-            label="Horarios Habituales"
+            label="Horarios"
             iconPosition="start"
           />
           <Tab
@@ -239,11 +228,6 @@ const ConfiguracionFarmacia: React.FC = () => {
             iconPosition="start"
           />
           <Tab
-            icon={<GroupsIcon />}
-            label="Cobertura por Horarios"
-            iconPosition="start"
-          />
-          <Tab
             icon={<PeopleIcon />}
             label="Configuración General"
             iconPosition="start"
@@ -252,9 +236,9 @@ const ConfiguracionFarmacia: React.FC = () => {
 
         <Box sx={{ p: 3 }}>
           <TabPanel value={tabValue} index={0}>
-            <HorariosHabituales
-              horarios={configuracion.horariosHabituales}
-              onChange={handleHorariosChange}
+            <ConfiguracionesCobertura
+              configuraciones={configuracion.configuracionesCobertura || []}
+              onChange={handleConfiguracionesCoberturaChange}
             />
           </TabPanel>
 
@@ -273,13 +257,6 @@ const ConfiguracionFarmacia: React.FC = () => {
           </TabPanel>
 
           <TabPanel value={tabValue} index={3}>
-            <ConfiguracionesCobertura
-              configuraciones={configuracion.configuracionesCobertura || []}
-              onChange={handleConfiguracionesCoberturaChange}
-            />
-          </TabPanel>
-
-          <TabPanel value={tabValue} index={4}>
             <Box sx={{ maxWidth: 400 }}>
               <Typography variant="h6" gutterBottom>
                 Trabajadores Mínimos (Global)
