@@ -94,10 +94,22 @@ class Turno:
 
 
 @dataclass
+class ConfiguracionCobertura:
+    """Configuración de cobertura mínima por franja horaria"""
+    id: str
+    dias_semana: List[int]  # [0-6] donde 0=Domingo, 1=Lunes, ..., 6=Sábado
+    hora_inicio: int  # Hora en formato 24h (0-23)
+    hora_fin: int  # Hora en formato 24h (1-24)
+    trabajadores_minimos: int  # Mínimo de empleados para esta franja
+    nombre: Optional[str] = None  # Nombre descriptivo opcional
+
+
+@dataclass
 class ConfiguracionTurnos:
     """Configuración de turnos disponibles y cobertura mínima"""
     turnos: Dict[str, Turno]
-    cobertura_minima: Dict[str, int]  # turnoId -> número de empleados
+    cobertura_minima: Dict[str, int]  # DEPRECADO: Mantener por compatibilidad (turnoId -> número de empleados o 'trabajadoresMinimos' -> número)
+    configuraciones_cobertura: Optional[List[ConfiguracionCobertura]] = None  # NUEVO: Configuraciones de cobertura por franjas horarias
 
 
 @dataclass

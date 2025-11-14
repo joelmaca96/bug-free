@@ -180,6 +180,31 @@ export class UnifiedSchedulingAlgorithm {
   }
 
   /**
+   * Obtener el número de trabajadores necesarios para una fecha y hora específica
+   * basándose en las configuraciones de cobertura por franjas horarias
+   */
+  private obtenerTrabajadoresNecesarios(fecha: Date, hora: number): number {
+    const configuraciones = this.farmacia.configuracion.configuracionesCobertura;
+
+    // Si no hay configuraciones específicas, usar el valor global
+    if (!configuraciones || configuraciones.length === 0) {
+      return this.farmacia.configuracion.trabajadoresMinimos;
+    }
+
+    const diaSemana = getDay(fecha);
+
+    // Buscar configuración que aplique a este día/hora
+    const configAplicable = configuraciones.find((config) => {
+      const diaAplica = config.diasSemana.includes(diaSemana);
+      const horaAplica = hora >= config.horaInicio && hora < config.horaFin;
+      return diaAplica && horaAplica;
+    });
+
+    // Si se encuentra configuración específica, usarla; sino, usar valor global
+    return configAplicable?.trabajadoresMinimos || this.farmacia.configuracion.trabajadoresMinimos;
+  }
+
+  /**
    * Generar todos los TimeSlots del período
    */
   private generarTimeSlots(fechaInicio: Date, fechaFin: Date): void {
@@ -263,7 +288,7 @@ export class UnifiedSchedulingAlgorithm {
               horaInicio: hora,
               horaFin: hora + 1,
               tipo: esFestivo ? 'festivo' : 'laboral',
-              trabajadoresNecesarios: this.farmacia.configuracion.trabajadoresMinimos,
+              trabajadoresNecesarios: this.obtenerTrabajadoresNecesarios(dia, hora),
               asignaciones: [],
             });
           }
@@ -288,7 +313,7 @@ export class UnifiedSchedulingAlgorithm {
               horaInicio: hora,
               horaFin: hora + 1,
               tipo: 'guardia',
-              trabajadoresNecesarios: this.farmacia.configuracion.trabajadoresMinimos,
+              trabajadoresNecesarios: this.obtenerTrabajadoresNecesarios(dia, hora),
               asignaciones: [],
               guardiaId, // Mismo ID para todos los slots de esta guardia
             });
@@ -302,7 +327,7 @@ export class UnifiedSchedulingAlgorithm {
               horaInicio: hora,
               horaFin: hora + 1,
               tipo: 'guardia',
-              trabajadoresNecesarios: this.farmacia.configuracion.trabajadoresMinimos,
+              trabajadoresNecesarios: this.obtenerTrabajadoresNecesarios(diaSiguiente, hora),
               asignaciones: [],
               guardiaId, // Mismo ID para vincular con la parte 1
             });
@@ -315,7 +340,7 @@ export class UnifiedSchedulingAlgorithm {
               horaInicio: hora,
               horaFin: hora + 1,
               tipo: 'guardia',
-              trabajadoresNecesarios: this.farmacia.configuracion.trabajadoresMinimos,
+              trabajadoresNecesarios: this.obtenerTrabajadoresNecesarios(dia, hora),
               asignaciones: [],
               guardiaId, // ID único para esta guardia
             });

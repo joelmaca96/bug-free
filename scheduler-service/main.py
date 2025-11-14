@@ -18,6 +18,7 @@ os.environ['REQUESTS_CA_BUNDLE'] = certifi.where()
 from models import (
     Empleado,
     ConfiguracionTurnos,
+    ConfiguracionCobertura,
     ConfiguracionAlgoritmo,
     Restricciones,
     Turno,
@@ -404,9 +405,23 @@ def _parsear_configuracion_turnos(config_data: dict) -> ConfiguracionTurnos:
             fecha_especifica=fecha_especifica
         )
 
+    # Parsear configuraciones de cobertura por franjas horarias
+    configuraciones_cobertura_data = cobertura_data.get('configuracionesCobertura', [])
+    configuraciones_cobertura = []
+    for config_data in configuraciones_cobertura_data:
+        configuraciones_cobertura.append(ConfiguracionCobertura(
+            id=config_data.get('id', ''),
+            dias_semana=config_data.get('diasSemana', []),
+            hora_inicio=config_data.get('horaInicio', 0),
+            hora_fin=config_data.get('horaFin', 24),
+            trabajadores_minimos=config_data.get('trabajadoresMinimos', 1),
+            nombre=config_data.get('nombre')
+        ))
+
     return ConfiguracionTurnos(
         turnos=turnos,
-        cobertura_minima=cobertura_data
+        cobertura_minima=cobertura_data,
+        configuraciones_cobertura=configuraciones_cobertura if configuraciones_cobertura else None
     )
 
 

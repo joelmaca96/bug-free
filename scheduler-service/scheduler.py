@@ -174,17 +174,50 @@ class SchedulerORTools:
 
         logger.info(f"Creadas {len(self.shifts)} variables de decisión")
 
+    def _obtener_trabajadores_necesarios(self, fecha_str: str, turno: 'Turno') -> int:
+        """
+        Obtener el número de trabajadores necesarios para una fecha y turno específicos
+        basándose en las configuraciones de cobertura por franjas horarias
+
+        Args:
+            fecha_str: Fecha en formato YYYY-MM-DD
+            turno: Objeto Turno
+
+        Returns:
+            Número de trabajadores necesarios para este turno
+        """
+        configuraciones = self.config_turnos.configuraciones_cobertura
+
+        # Si no hay configuraciones específicas, usar el valor global
+        if not configuraciones:
+            return self.config_turnos.cobertura_minima.get('trabajadoresMinimos', 1)
+
+        # Obtener el día de la semana (0=Lunes, 6=Domingo en Python; convertir a 0=Domingo)
+        fecha_obj = datetime.strptime(fecha_str, '%Y-%m-%d')
+        dia_semana_python = fecha_obj.weekday()  # 0=Lunes, 6=Domingo
+        dia_semana = (dia_semana_python + 1) % 7  # Convertir a 0=Domingo, 1=Lunes, ..., 6=Sábado
+
+        # Obtener la hora de inicio del turno
+        hora_inicio = int(turno.hora_inicio.split(':')[0])
+
+        # Buscar configuración que aplique a este día/hora
+        for config in configuraciones:
+            dia_aplica = dia_semana in config.dias_semana
+            hora_aplica = hora_inicio >= config.hora_inicio and hora_inicio < config.hora_fin
+
+            if dia_aplica and hora_aplica:
+                return config.trabajadores_minimos
+
+        # Si no se encuentra configuración específica, usar valor global
+        return self.config_turnos.cobertura_minima.get('trabajadoresMinimos', 1)
+
     def _aplicar_restricciones_cobertura(self):
         """
         RESTRICCIÓN DURA: Cobertura exacta por turno cada día
         Cada turno válido debe tener exactamente trabajadoresMinimos empleados asignados
+        (puede variar según franja horaria si hay configuraciones de cobertura)
         """
         logger.info("Aplicando restricciones de cobertura...")
-
-        # Obtener trabajadores mínimos desde la configuración
-        trabajadores_minimos = self.config_turnos.cobertura_minima.get('trabajadoresMinimos', 1)
-
-        logger.info(f"Cobertura requerida: {trabajadores_minimos} empleado(s) por turno")
 
         for dia in self.dias:
             # Obtener turnos válidos para este día
@@ -194,6 +227,11 @@ class SchedulerORTools:
             ]
 
             for turno_id in turnos_validos_dia:
+                turno = self.turno_info[turno_id]
+
+                # Obtener trabajadores necesarios para este turno específico
+                trabajadores_necesarios = self._obtener_trabajadores_necesarios(dia, turno)
+
                 # Recopilar variables que existen para este turno y día
                 empleados_asignados = []
                 for emp_idx in range(self.num_empleados):
@@ -201,8 +239,9 @@ class SchedulerORTools:
                         empleados_asignados.append(self.shifts[(emp_idx, dia, turno_id)])
 
                 if empleados_asignados:
-                    # Restricción: exactamente trabajadoresMinimos empleados
-                    self.model.Add(sum(empleados_asignados) == trabajadores_minimos)
+                    # Restricción: exactamente trabajadoresNecesarios empleados
+                    self.model.Add(sum(empleados_asignados) == trabajadores_necesarios)
+                    logger.debug(f"Día {dia}, Turno {turno_id}: {trabajadores_necesarios} trabajadores requeridos")
 
     def _aplicar_restriccion_un_turno_por_dia(self):
         """

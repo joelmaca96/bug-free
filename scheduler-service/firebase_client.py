@@ -152,11 +152,15 @@ class FirebaseClient:
             turnos_guardia = self._generar_turnos_guardia(jornadas_guardia)
             turnos.update(turnos_guardia)
 
+            # Obtener configuraciones de cobertura por franjas horarias
+            configuraciones_cobertura = config_farmacia.get('configuracionesCobertura', [])
+
             # Construir configuración completa
             config_data = {
                 'turnos': turnos,
                 'coberturaMinima': {
-                    'trabajadoresMinimos': config_farmacia.get('trabajadoresMinimos', 1)
+                    'trabajadoresMinimos': config_farmacia.get('trabajadoresMinimos', 1),
+                    'configuracionesCobertura': configuraciones_cobertura
                 },
                 'restricciones': config_algoritmo_data.get('restricciones', {}),
                 'prioridades': config_algoritmo_data.get('prioridades', {}),

@@ -2,7 +2,7 @@
  * Validaciones específicas para horarios de farmacia
  */
 
-import { HorarioHabitual, JornadaGuardia } from '@/types';
+import { HorarioHabitual, JornadaGuardia, ConfiguracionCobertura } from '@/types';
 import {
   horariosSeOverlapan,
   isValidDate,
@@ -219,6 +219,188 @@ export const validarTrabajadoresMinimos = (
   };
 };
 
+// Validar configuraciones de cobertura por franjas horarias
+export const validarConfiguracionesCobertura = (
+  configuraciones: ConfiguracionCobertura[]
+): ValidacionHorario => {
+  const errores: string[] = [];
+
+  if (configuraciones.length === 0) {
+    // No es obligatorio tener configuraciones (usar trabajadoresMinimos global)
+    return { valido: true, errores: [] };
+  }
+
+  // Nombres de días para mensajes
+  const nombresDias = [
+    'Domingo',
+    'Lunes',
+    'Martes',
+    'Miércoles',
+    'Jueves',
+    'Viernes',
+    'Sábado',
+  ];
+
+  // Validar cada configuración individualmente
+  configuraciones.forEach((config, index) => {
+    // Validar que tenga al menos un día seleccionado
+    if (!config.diasSemana || config.diasSemana.length === 0) {
+      errores.push(
+        `Configuración ${index + 1} (${config.nombre || 'sin nombre'}): Debe seleccionar al menos un día`
+      );
+    }
+
+    // Validar que los días estén en el rango válido
+    config.diasSemana?.forEach((dia) => {
+      if (dia < 0 || dia > 6) {
+        errores.push(
+          `Configuración ${index + 1} (${config.nombre || 'sin nombre'}): Día inválido (${dia}). Debe estar entre 0-6`
+        );
+      }
+    });
+
+    // Validar que horaInicio < horaFin
+    if (config.horaInicio >= config.horaFin) {
+      errores.push(
+        `Configuración ${index + 1} (${config.nombre || 'sin nombre'}): La hora de inicio (${config.horaInicio}:00) debe ser menor que la hora de fin (${config.horaFin}:00)`
+      );
+    }
+
+    // Validar que las horas estén en el rango válido
+    if (config.horaInicio < 0 || config.horaInicio > 23) {
+      errores.push(
+        `Configuración ${index + 1} (${config.nombre || 'sin nombre'}): Hora de inicio inválida (${config.horaInicio}). Debe estar entre 0-23`
+      );
+    }
+
+    if (config.horaFin < 1 || config.horaFin > 24) {
+      errores.push(
+        `Configuración ${index + 1} (${config.nombre || 'sin nombre'}): Hora de fin inválida (${config.horaFin}). Debe estar entre 1-24`
+      );
+    }
+
+    // Validar trabajadores mínimos
+    if (config.trabajadoresMinimos < 1) {
+      errores.push(
+        `Configuración ${index + 1} (${config.nombre || 'sin nombre'}): Debe haber al menos 1 trabajador mínimo`
+      );
+    }
+
+    if (config.trabajadoresMinimos > 50) {
+      errores.push(
+        `Configuración ${index + 1} (${config.nombre || 'sin nombre'}): El número de trabajadores mínimos no puede exceder 50`
+      );
+    }
+
+    if (!Number.isInteger(config.trabajadoresMinimos)) {
+      errores.push(
+        `Configuración ${index + 1} (${config.nombre || 'sin nombre'}): El número de trabajadores mínimos debe ser un número entero`
+      );
+    }
+  });
+
+  // Validar que no haya solapamientos entre configuraciones
+  for (let i = 0; i < configuraciones.length; i++) {
+    for (let j = i + 1; j < configuraciones.length; j++) {
+      const c1 = configuraciones[i];
+      const c2 = configuraciones[j];
+
+      // Verificar si hay días en común
+      const diasComunes = c1.diasSemana.filter((dia) =>
+        c2.diasSemana.includes(dia)
+      );
+
+      if (diasComunes.length > 0) {
+        // Verificar si hay solapamiento de horarios
+        const horasSolapan =
+          (c1.horaInicio < c2.horaFin && c1.horaFin > c2.horaInicio) ||
+          (c2.horaInicio < c1.horaFin && c2.horaFin > c1.horaInicio);
+
+        if (horasSolapan) {
+          const diasStr = diasComunes
+            .map((dia) => nombresDias[dia])
+            .join(', ');
+          errores.push(
+            `Solapamiento detectado entre "${c1.nombre || 'Configuración ' + (i + 1)}" y "${c2.nombre || 'Configuración ' + (j + 1)}" en ${diasStr} (${c1.horaInicio}:00-${c1.horaFin}:00 y ${c2.horaInicio}:00-${c2.horaFin}:00)`
+          );
+        }
+      }
+    }
+  }
+
+  return {
+    valido: errores.length === 0,
+    errores,
+  };
+};
+
+// Helper para verificar si una configuración cubre un horario habitual
+const configuracionCubreHorario = (
+  config: ConfiguracionCobertura,
+  horario: HorarioHabitual
+): boolean => {
+  // Verificar si el día está incluido
+  if (!config.diasSemana.includes(horario.dia)) {
+    return false;
+  }
+
+  // Convertir horario.inicio y horario.fin (HH:mm) a números
+  const horarioInicioHora = parseInt(horario.inicio.split(':')[0]);
+  const horarioFinHora = parseInt(horario.fin.split(':')[0]);
+  const horarioFinMinutos = parseInt(horario.fin.split(':')[1]);
+
+  // Ajustar horaFin si hay minutos (por ejemplo, 13:30 -> 14)
+  const horarioFinAjustado =
+    horarioFinMinutos > 0 ? horarioFinHora + 1 : horarioFinHora;
+
+  // Verificar si el horario está completamente cubierto
+  return (
+    config.horaInicio <= horarioInicioHora &&
+    config.horaFin >= horarioFinAjustado
+  );
+};
+
+// Validar que todas las franjas horarias habituales estén cubiertas
+export const validarCoberturaTotalDeHorarios = (
+  configuraciones: ConfiguracionCobertura[],
+  horariosHabituales: HorarioHabitual[]
+): ValidacionHorario => {
+  const errores: string[] = [];
+
+  if (configuraciones.length === 0) {
+    // Si no hay configuraciones específicas, se usa el valor global
+    return { valido: true, errores: [] };
+  }
+
+  const nombresDias = [
+    'Domingo',
+    'Lunes',
+    'Martes',
+    'Miércoles',
+    'Jueves',
+    'Viernes',
+    'Sábado',
+  ];
+
+  // Verificar cada horario habitual
+  horariosHabituales.forEach((horario) => {
+    const estaCubierto = configuraciones.some((config) =>
+      configuracionCubreHorario(config, horario)
+    );
+
+    if (!estaCubierto) {
+      errores.push(
+        `Falta configuración de cobertura para ${nombresDias[horario.dia]} ${horario.inicio}-${horario.fin}`
+      );
+    }
+  });
+
+  return {
+    valido: errores.length === 0,
+    errores,
+  };
+};
+
 // Validar configuración completa de farmacia
 export interface ValidacionConfiguracion {
   valido: boolean;
@@ -227,6 +409,7 @@ export interface ValidacionConfiguracion {
     jornadasGuardia: string[];
     festivosRegionales: string[];
     trabajadoresMinimos: string[];
+    configuracionesCobertura: string[];
   };
 }
 
@@ -235,6 +418,7 @@ export const validarConfiguracionFarmacia = (config: {
   jornadasGuardia: JornadaGuardia[];
   festivosRegionales: string[];
   trabajadoresMinimos: number;
+  configuracionesCobertura?: ConfiguracionCobertura[];
 }): ValidacionConfiguracion => {
   const validacionHorarios = validarTodosHorariosHabituales(
     config.horariosHabituales
@@ -246,18 +430,31 @@ export const validarConfiguracionFarmacia = (config: {
   const validacionTrabajadores = validarTrabajadoresMinimos(
     config.trabajadoresMinimos
   );
+  const validacionConfiguraciones = validarConfiguracionesCobertura(
+    config.configuracionesCobertura || []
+  );
+  const validacionCoberturaTotalConfig = validarCoberturaTotalDeHorarios(
+    config.configuracionesCobertura || [],
+    config.horariosHabituales
+  );
 
   return {
     valido:
       validacionHorarios.valido &&
       validacionGuardias.valido &&
       validacionFestivos.valido &&
-      validacionTrabajadores.valido,
+      validacionTrabajadores.valido &&
+      validacionConfiguraciones.valido &&
+      validacionCoberturaTotalConfig.valido,
     errores: {
       horariosHabituales: validacionHorarios.errores,
       jornadasGuardia: validacionGuardias.errores,
       festivosRegionales: validacionFestivos.errores,
       trabajadoresMinimos: validacionTrabajadores.errores,
+      configuracionesCobertura: [
+        ...validacionConfiguraciones.errores,
+        ...validacionCoberturaTotalConfig.errores,
+      ],
     },
   };
 };

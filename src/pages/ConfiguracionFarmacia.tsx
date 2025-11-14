@@ -17,14 +17,16 @@ import ScheduleIcon from '@mui/icons-material/Schedule';
 import LocalHospitalIcon from '@mui/icons-material/LocalHospital';
 import EventIcon from '@mui/icons-material/Event';
 import PeopleIcon from '@mui/icons-material/People';
+import GroupsIcon from '@mui/icons-material/Groups';
 import { useAuth } from '@/contexts/AuthContext';
 import { getFarmaciaById, updateFarmacia } from '@/services/farmaciasRealtimeService';
-import { Farmacia, HorarioHabitual, JornadaGuardia } from '@/types';
+import { Farmacia, HorarioHabitual, JornadaGuardia, ConfiguracionCobertura } from '@/types';
 import { validarConfiguracionFarmacia } from '@/utils/scheduleValidations';
 import { migrarSiEsNecesario } from '@/utils/migrateGuardias';
 import HorariosHabituales from '@/components/HorariosHabituales';
 import JornadasGuardia from '@/components/JornadasGuardia';
 import FestivosRegionales from '@/components/FestivosRegionales';
+import ConfiguracionesCobertura from '@/components/ConfiguracionesCobertura';
 
 interface TabPanelProps {
   children?: React.ReactNode;
@@ -55,6 +57,7 @@ const ConfiguracionFarmacia: React.FC = () => {
     jornadasGuardia: [] as JornadaGuardia[],
     festivosRegionales: [] as string[],
     trabajadoresMinimos: 1,
+    configuracionesCobertura: [] as ConfiguracionCobertura[],
   });
 
   useEffect(() => {
@@ -81,6 +84,7 @@ const ConfiguracionFarmacia: React.FC = () => {
         setConfiguracion({
           ...farmaciaData.configuracion,
           jornadasGuardia: guardiasActualizadas,
+          configuracionesCobertura: farmaciaData.configuracion.configuracionesCobertura || [],
         });
       }
     } catch (error) {
@@ -107,6 +111,7 @@ const ConfiguracionFarmacia: React.FC = () => {
           ...validacion.errores.jornadasGuardia,
           ...validacion.errores.festivosRegionales,
           ...validacion.errores.trabajadoresMinimos,
+          ...validacion.errores.configuracionesCobertura,
         ];
 
         showSnackbar(
@@ -155,6 +160,15 @@ const ConfiguracionFarmacia: React.FC = () => {
     setConfiguracion((prev) => ({
       ...prev,
       trabajadoresMinimos: value,
+    }));
+  };
+
+  const handleConfiguracionesCoberturaChange = (
+    configuraciones: ConfiguracionCobertura[]
+  ) => {
+    setConfiguracion((prev) => ({
+      ...prev,
+      configuracionesCobertura: configuraciones,
     }));
   };
 
@@ -225,6 +239,11 @@ const ConfiguracionFarmacia: React.FC = () => {
             iconPosition="start"
           />
           <Tab
+            icon={<GroupsIcon />}
+            label="Cobertura por Horarios"
+            iconPosition="start"
+          />
+          <Tab
             icon={<PeopleIcon />}
             label="Configuración General"
             iconPosition="start"
@@ -254,12 +273,19 @@ const ConfiguracionFarmacia: React.FC = () => {
           </TabPanel>
 
           <TabPanel value={tabValue} index={3}>
+            <ConfiguracionesCobertura
+              configuraciones={configuracion.configuracionesCobertura || []}
+              onChange={handleConfiguracionesCoberturaChange}
+            />
+          </TabPanel>
+
+          <TabPanel value={tabValue} index={4}>
             <Box sx={{ maxWidth: 400 }}>
               <Typography variant="h6" gutterBottom>
-                Trabajadores Mínimos
+                Trabajadores Mínimos (Global)
               </Typography>
               <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                Número mínimo de trabajadores necesarios para cubrir un turno
+                Valor por defecto cuando no hay configuración específica por horario
               </Typography>
               <Tooltip title="Mínimo de empleados requeridos simultáneamente para operar la farmacia">
                 <TextField
@@ -271,7 +297,7 @@ const ConfiguracionFarmacia: React.FC = () => {
                     handleTrabajadoresChange(parseInt(e.target.value) || 1)
                   }
                   InputProps={{ inputProps: { min: 1, max: 50 } }}
-                  helperText="Número mínimo de empleados necesarios por turno"
+                  helperText="Número mínimo de empleados necesarios por turno (si no se define cobertura específica)"
                 />
               </Tooltip>
             </Box>

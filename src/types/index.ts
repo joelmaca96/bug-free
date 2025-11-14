@@ -55,11 +55,21 @@ export interface JornadaGuardia {
   horaFin: string; // HH:mm
 }
 
+export interface ConfiguracionCobertura {
+  id: string;
+  diasSemana: number[]; // [0-6] donde 0=Domingo, 1=Lunes, ..., 6=Sábado
+  horaInicio: number; // Hora en formato 24h (0-23)
+  horaFin: number; // Hora en formato 24h (1-24)
+  trabajadoresMinimos: number; // Mínimo de empleados para esta franja
+  nombre?: string; // Nombre descriptivo opcional
+}
+
 export interface ConfiguracionFarmacia {
   horariosHabituales: HorarioHabitual[];
   jornadasGuardia: JornadaGuardia[];
   festivosRegionales: string[]; // Array de fechas ISO
-  trabajadoresMinimos: number;
+  trabajadoresMinimos: number; // DEPRECADO: Mantener por compatibilidad con datos existentes
+  configuracionesCobertura?: ConfiguracionCobertura[]; // NUEVO: Configuración de cobertura por franjas horarias
 }
 
 // Farmacia
