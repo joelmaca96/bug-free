@@ -389,13 +389,19 @@ def _parsear_configuracion_turnos(config_data: dict) -> ConfiguracionTurnos:
         tipo_str = turno_info.get('tipo', 'laboral')
         tipo = TipoTurno(tipo_str) if tipo_str in ['laboral', 'guardia', 'festivo'] else TipoTurno.LABORAL
 
+        # Obtener días de la semana válidos y fecha específica
+        dias_semana_validos = turno_info.get('diasSemanaValidos', [])
+        fecha_especifica = turno_info.get('fechaEspecifica')
+
         turnos[turno_id] = Turno(
             id=turno_id,
             nombre=turno_info.get('nombre', ''),
             hora_inicio=turno_info.get('horaInicio', '09:00'),
             hora_fin=turno_info.get('horaFin', '17:00'),
             duracion_horas=turno_info.get('duracionHoras', 8),
-            tipo=tipo
+            tipo=tipo,
+            dias_semana_validos=dias_semana_validos,
+            fecha_especifica=fecha_especifica
         )
 
     return ConfiguracionTurnos(

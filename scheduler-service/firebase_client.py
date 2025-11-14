@@ -144,19 +144,27 @@ class FirebaseClient:
             # Combinar configuraciones
             config_farmacia = farmacia_data.get('configuracion', {})
 
+            # Generar turnos desde horarios habituales
+            turnos = self._generar_turnos_desde_horarios(config_farmacia.get('horariosHabituales', []))
+
+            # Generar turnos de guardia desde jornadasGuardia
+            jornadas_guardia = config_farmacia.get('jornadasGuardia', [])
+            turnos_guardia = self._generar_turnos_guardia(jornadas_guardia)
+            turnos.update(turnos_guardia)
+
             # Construir configuración completa
             config_data = {
-                'turnos': self._generar_turnos_desde_horarios(config_farmacia.get('horariosHabituales', [])),
+                'turnos': turnos,
                 'coberturaMinima': {
                     'trabajadoresMinimos': config_farmacia.get('trabajadoresMinimos', 1)
                 },
                 'restricciones': config_algoritmo_data.get('restricciones', {}),
                 'prioridades': config_algoritmo_data.get('prioridades', {}),
                 'festivosRegionales': config_farmacia.get('festivosRegionales', []),
-                'jornadasGuardia': config_farmacia.get('jornadasGuardia', [])
+                'jornadasGuardia': jornadas_guardia
             }
 
-            logger.info(f"Configuración leída para farmacia {farmacia_id}")
+            logger.info(f"Configuración leída para farmacia {farmacia_id}: {len(turnos)} turnos totales")
             return config_data
 
         except Exception as e:
@@ -165,43 +173,253 @@ class FirebaseClient:
 
     def _generar_turnos_desde_horarios(self, horarios_habituales: list) -> Dict[str, Any]:
         """
-        Genera definiciones de turnos desde los horarios habituales
+        Genera definiciones de turnos desde los horarios habituales.
+        Divide turnos largos en múltiples turnos de duración razonable (4-6 horas).
 
         Args:
             horarios_habituales: Lista de horarios habituales por día
+                Ejemplo: [{'dia': 1, 'inicio': '09:00', 'fin': '22:00'}, ...]
+                donde dia: 1=Lunes, 6=Sábado, 7=Domingo
 
         Returns:
-            Diccionario de turnos
+            Diccionario de turnos con información completa
         """
         turnos = {}
+        turno_counter = 0
 
-        for idx, horario in enumerate(horarios_habituales):
+        # Agrupar horarios por mismo patrón de horas (para reutilizar turnos)
+        horarios_por_patron = {}
+        for horario in horarios_habituales:
             hora_inicio = horario.get('inicio', '09:00')
             hora_fin = horario.get('fin', '17:00')
+            dia_semana = horario.get('dia', 1)
 
-            # Calcular duración en horas
+            patron = (hora_inicio, hora_fin)
+            if patron not in horarios_por_patron:
+                horarios_por_patron[patron] = []
+            horarios_por_patron[patron].append(dia_semana)
+
+        # Generar turnos para cada patrón horario
+        for (hora_inicio, hora_fin), dias_semana in horarios_por_patron.items():
             try:
                 h_inicio = int(hora_inicio.split(':')[0])
                 m_inicio = int(hora_inicio.split(':')[1])
                 h_fin = int(hora_fin.split(':')[0])
                 m_fin = int(hora_fin.split(':')[1])
 
-                duracion = (h_fin * 60 + m_fin - h_inicio * 60 - m_inicio) / 60
+                duracion_minutos = (h_fin * 60 + m_fin) - (h_inicio * 60 + m_inicio)
+                duracion_horas = duracion_minutos / 60
             except:
-                duracion = 8
+                logger.warning(f"Error parseando horario {hora_inicio}-{hora_fin}, usando valores por defecto")
+                h_inicio, m_inicio = 9, 0
+                h_fin, m_fin = 17, 0
+                duracion_horas = 8
 
-            turno_id = f"turno_{idx + 1}"
-            turnos[turno_id] = {
-                'id': turno_id,
-                'nombre': f"Turno {hora_inicio}-{hora_fin}",
-                'horaInicio': hora_inicio,
-                'horaFin': hora_fin,
-                'duracionHoras': duracion,
+            # Determinar nombre de días para el turno
+            nombres_dias = self._obtener_nombres_dias(dias_semana)
+
+            # Si el turno es corto (<=6 horas), crear un solo turno
+            if duracion_horas <= 6:
+                turno_counter += 1
+                turno_id = f"turno_{turno_counter}"
+                turnos[turno_id] = {
+                    'id': turno_id,
+                    'nombre': f"{nombres_dias} {hora_inicio}-{hora_fin}",
+                    'horaInicio': hora_inicio,
+                    'horaFin': hora_fin,
+                    'duracionHoras': duracion_horas,
+                    'tipo': 'laboral',
+                    'diasSemanaValidos': dias_semana
+                }
+            else:
+                # Turno largo: dividir en múltiples turnos de 4-6 horas
+                turnos_divididos = self._dividir_turno_largo(
+                    hora_inicio, hora_fin, dias_semana, nombres_dias
+                )
+                for turno_div in turnos_divididos:
+                    turno_counter += 1
+                    turno_id = f"turno_{turno_counter}"
+                    turno_div['id'] = turno_id
+                    turnos[turno_id] = turno_div
+
+        logger.info(f"Generados {len(turnos)} turnos desde horarios habituales")
+        return turnos
+
+    def _dividir_turno_largo(
+        self,
+        hora_inicio: str,
+        hora_fin: str,
+        dias_semana: list,
+        nombres_dias: str
+    ) -> list:
+        """
+        Divide un turno largo en múltiples turnos de 4-6 horas
+
+        Args:
+            hora_inicio: Hora de inicio (HH:MM)
+            hora_fin: Hora de fin (HH:MM)
+            dias_semana: Lista de días de la semana válidos
+            nombres_dias: Nombre descriptivo de los días
+
+        Returns:
+            Lista de definiciones de turnos
+        """
+        h_inicio = int(hora_inicio.split(':')[0])
+        m_inicio = int(hora_inicio.split(':')[1])
+        h_fin = int(hora_fin.split(':')[0])
+        m_fin = int(hora_fin.split(':')[1])
+
+        duracion_total_minutos = (h_fin * 60 + m_fin) - (h_inicio * 60 + m_inicio)
+
+        # Calcular número de turnos (intentar turnos de ~6 horas)
+        duracion_objetivo_horas = 6
+        num_turnos = max(2, int(duracion_total_minutos / (duracion_objetivo_horas * 60) + 0.5))
+        duracion_por_turno = duracion_total_minutos / num_turnos
+
+        turnos = []
+        minutos_actual = h_inicio * 60 + m_inicio
+
+        etiquetas = ['Mañana', 'Tarde', 'Noche']
+
+        for i in range(num_turnos):
+            inicio_h = minutos_actual // 60
+            inicio_m = minutos_actual % 60
+
+            minutos_fin = int(minutos_actual + duracion_por_turno)
+            fin_h = minutos_fin // 60
+            fin_m = minutos_fin % 60
+
+            inicio_str = f"{inicio_h:02d}:{inicio_m:02d}"
+            fin_str = f"{fin_h:02d}:{fin_m:02d}"
+
+            etiqueta = etiquetas[i] if i < len(etiquetas) else f"Turno {i+1}"
+
+            turnos.append({
+                'nombre': f"{nombres_dias} {etiqueta} {inicio_str}-{fin_str}",
+                'horaInicio': inicio_str,
+                'horaFin': fin_str,
+                'duracionHoras': duracion_por_turno / 60,
                 'tipo': 'laboral',
-                'dia': horario.get('dia')
-            }
+                'diasSemanaValidos': dias_semana
+            })
+
+            minutos_actual = minutos_fin
 
         return turnos
+
+    def _obtener_nombres_dias(self, dias_semana: list) -> str:
+        """
+        Obtiene un nombre descriptivo para los días de la semana
+
+        Args:
+            dias_semana: Lista de números de día (1=Lunes, 7=Domingo)
+
+        Returns:
+            Nombre descriptivo (ej: "L-V", "Sábado", "L-D")
+        """
+        if not dias_semana:
+            return "Todos"
+
+        dias_semana_sorted = sorted(dias_semana)
+
+        # Casos especiales comunes
+        if dias_semana_sorted == [1, 2, 3, 4, 5]:
+            return "L-V"
+        elif dias_semana_sorted == [6]:
+            return "Sábado"
+        elif dias_semana_sorted == [7]:
+            return "Domingo"
+        elif dias_semana_sorted == [6, 7]:
+            return "Fin de semana"
+        elif len(dias_semana_sorted) == 7:
+            return "L-D"
+        else:
+            # Nombres cortos de días
+            nombres = {1: 'L', 2: 'M', 3: 'X', 4: 'J', 5: 'V', 6: 'S', 7: 'D'}
+            return ','.join(nombres.get(d, str(d)) for d in dias_semana_sorted)
+
+    def _generar_turnos_guardia(self, jornadas_guardia: list) -> Dict[str, Any]:
+        """
+        Genera turnos de guardia para fechas específicas
+
+        Args:
+            jornadas_guardia: Lista de jornadas de guardia
+                Ejemplo: [{'fechaInicio': '2025-11-16', 'fechaFin': '2025-11-16',
+                          'horaInicio': '09:00', 'horaFin': '22:00'}, ...]
+
+        Returns:
+            Diccionario de turnos de guardia
+        """
+        from datetime import datetime, timedelta
+
+        turnos_guardia = {}
+        turno_guardia_counter = 0
+
+        for jornada in jornadas_guardia:
+            # Soportar ambos formatos: 'fecha' (viejo) o 'fechaInicio' (nuevo)
+            fecha_inicio = jornada.get('fechaInicio') or jornada.get('fecha')
+            fecha_fin = jornada.get('fechaFin', fecha_inicio)
+            hora_inicio = jornada.get('horaInicio', '09:00')
+            hora_fin = jornada.get('horaFin', '22:00')
+
+            if not fecha_inicio:
+                logger.warning(f"Jornada de guardia sin fecha, omitiendo: {jornada}")
+                continue
+
+            try:
+                # Calcular duración
+                h_inicio = int(hora_inicio.split(':')[0])
+                m_inicio = int(hora_inicio.split(':')[1])
+                h_fin = int(hora_fin.split(':')[0])
+                m_fin = int(hora_fin.split(':')[1])
+
+                duracion_minutos = (h_fin * 60 + m_fin) - (h_inicio * 60 + m_inicio)
+                duracion_horas = duracion_minutos / 60
+
+                # Generar turnos para cada día del rango de fechas
+                fecha_actual = datetime.strptime(fecha_inicio, '%Y-%m-%d')
+                fecha_final = datetime.strptime(fecha_fin, '%Y-%m-%d')
+
+                while fecha_actual <= fecha_final:
+                    fecha_str = fecha_actual.strftime('%Y-%m-%d')
+                    dia_semana = fecha_actual.isoweekday()  # 1=Lunes, 7=Domingo
+
+                    # Si el turno de guardia es largo, dividirlo
+                    if duracion_horas <= 6:
+                        turno_guardia_counter += 1
+                        turno_id = f"guardia_{turno_guardia_counter}"
+                        turnos_guardia[turno_id] = {
+                            'id': turno_id,
+                            'nombre': f"Guardia {fecha_str} {hora_inicio}-{hora_fin}",
+                            'horaInicio': hora_inicio,
+                            'horaFin': hora_fin,
+                            'duracionHoras': duracion_horas,
+                            'tipo': 'guardia',
+                            'diasSemanaValidos': [dia_semana],
+                            'fechaEspecifica': fecha_str  # Campo especial para guardias
+                        }
+                    else:
+                        # Dividir turno de guardia largo
+                        turnos_divididos = self._dividir_turno_largo(
+                            hora_inicio, hora_fin, [dia_semana], f"Guardia {fecha_str}"
+                        )
+                        for turno_div in turnos_divididos:
+                            turno_guardia_counter += 1
+                            turno_id = f"guardia_{turno_guardia_counter}"
+                            turno_div['id'] = turno_id
+                            turno_div['tipo'] = 'guardia'
+                            turno_div['fechaEspecifica'] = fecha_str
+                            turnos_guardia[turno_id] = turno_div
+
+                    # Avanzar al siguiente día
+                    fecha_actual += timedelta(days=1)
+
+            except Exception as e:
+                logger.warning(f"Error procesando jornada de guardia {jornada}: {e}")
+                continue
+
+        logger.info(f"Generados {len(turnos_guardia)} turnos de guardia")
+        return turnos_guardia
 
     def guardar_horarios(
         self,

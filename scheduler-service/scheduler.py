@@ -160,51 +160,74 @@ class SchedulerORTools:
         Crear variables de decisión para el modelo
 
         Variables: shifts[(e, d, t)] = 1 si empleado e trabaja turno t en día d
+        Solo se crean variables para combinaciones válidas (día-turno)
         """
         logger.info("Creando variables de decisión...")
 
         for emp_idx, empleado in enumerate(self.empleados):
             for dia in self.dias:
-                for turno_id in self.turno_info.keys():
-                    var_name = f'shift_e{emp_idx}_d{dia}_t{turno_id}'
-                    self.shifts[(emp_idx, dia, turno_id)] = self.model.NewBoolVar(var_name)
+                for turno_id, turno in self.turno_info.items():
+                    # Solo crear variable si el turno es válido para este día
+                    if turno.es_valido_para_dia(dia):
+                        var_name = f'shift_e{emp_idx}_d{dia}_t{turno_id}'
+                        self.shifts[(emp_idx, dia, turno_id)] = self.model.NewBoolVar(var_name)
 
         logger.info(f"Creadas {len(self.shifts)} variables de decisión")
 
     def _aplicar_restricciones_cobertura(self):
         """
-        RESTRICCIÓN DURA: Cobertura mínima por turno cada día
-        Cada turno debe tener al menos N empleados asignados
+        RESTRICCIÓN DURA: Cobertura exacta por turno cada día
+        Cada turno válido debe tener exactamente trabajadoresMinimos empleados asignados
         """
-        logger.info("Aplicando restricciones de cobertura mínima...")
+        logger.info("Aplicando restricciones de cobertura...")
+
+        # Obtener trabajadores mínimos desde la configuración
+        trabajadores_minimos = self.config_turnos.cobertura_minima.get('trabajadoresMinimos', 1)
+
+        logger.info(f"Cobertura requerida: {trabajadores_minimos} empleado(s) por turno")
 
         for dia in self.dias:
-            for turno_id, num_requerido in self.config_turnos.cobertura_minima.items():
-                if turno_id not in self.turno_info:
-                    continue
+            # Obtener turnos válidos para este día
+            turnos_validos_dia = [
+                turno_id for turno_id, turno in self.turno_info.items()
+                if turno.es_valido_para_dia(dia)
+            ]
 
-                # Suma de empleados asignados a este turno este día >= cobertura mínima
-                empleados_asignados = [
-                    self.shifts[(emp_idx, dia, turno_id)]
-                    for emp_idx in range(self.num_empleados)
-                ]
+            for turno_id in turnos_validos_dia:
+                # Recopilar variables que existen para este turno y día
+                empleados_asignados = []
+                for emp_idx in range(self.num_empleados):
+                    if (emp_idx, dia, turno_id) in self.shifts:
+                        empleados_asignados.append(self.shifts[(emp_idx, dia, turno_id)])
 
-                self.model.Add(sum(empleados_asignados) >= num_requerido)
+                if empleados_asignados:
+                    # Restricción: exactamente trabajadoresMinimos empleados
+                    self.model.Add(sum(empleados_asignados) == trabajadores_minimos)
 
     def _aplicar_restriccion_un_turno_por_dia(self):
         """
-        RESTRICCIÓN DURA: Un empleado solo puede trabajar un turno por día
+        RESTRICCIÓN DURA: Un empleado no puede trabajar turnos que se solapen
+        Permite múltiples turnos consecutivos (ej: Mañana + Tarde) pero no solapados
         """
-        logger.info("Aplicando restricción de un turno por día...")
+        logger.info("Aplicando restricción de no solapamiento de turnos...")
 
         for emp_idx in range(self.num_empleados):
             for dia in self.dias:
-                turnos_del_dia = [
-                    self.shifts[(emp_idx, dia, turno_id)]
-                    for turno_id in self.turno_info.keys()
-                ]
-                # Máximo 1 turno por día
-                self.model.Add(sum(turnos_del_dia) <= 1)
+                # Obtener turnos asignables este día para este empleado
+                turnos_dia = []
+                for turno_id, turno in self.turno_info.items():
+                    if (emp_idx, dia, turno_id) in self.shifts:
+                        turnos_dia.append((turno_id, turno))
+
+                # Para cada par de turnos que se solapan, solo uno puede estar activo
+                for i, (turno_id1, turno1) in enumerate(turnos_dia):
+                    for turno_id2, turno2 in turnos_dia[i+1:]:
+                        if turno1.se_solapa_con(turno2):
+                            # No pueden estar ambos asignados
+                            self.model.Add(
+                                self.shifts[(emp_idx, dia, turno_id1)] +
+                                self.shifts[(emp_idx, dia, turno_id2)] <= 1
+                            )
 
     def _aplicar_restricciones_horas_maximas(self):
         """
@@ -217,13 +240,15 @@ class SchedulerORTools:
             for dia in self.dias:
                 horas_dia = []
                 for turno_id, turno in self.turno_info.items():
-                    horas_dia.append(
-                        self.shifts[(emp_idx, dia, turno_id)] * int(turno.duracion_horas)
-                    )
+                    if (emp_idx, dia, turno_id) in self.shifts:
+                        horas_dia.append(
+                            self.shifts[(emp_idx, dia, turno_id)] * int(turno.duracion_horas)
+                        )
 
-                self.model.Add(
-                    sum(horas_dia) <= int(empleado.horas_maximas_diarias)
-                )
+                if horas_dia:
+                    self.model.Add(
+                        sum(horas_dia) <= int(empleado.horas_maximas_diarias)
+                    )
 
             # Restricción de horas semanales
             # Dividir el mes en semanas (lunes a domingo)
@@ -232,25 +257,29 @@ class SchedulerORTools:
                 horas_semana = []
                 for dia in semana:
                     for turno_id, turno in self.turno_info.items():
-                        horas_semana.append(
-                            self.shifts[(emp_idx, dia, turno_id)] * int(turno.duracion_horas)
-                        )
+                        if (emp_idx, dia, turno_id) in self.shifts:
+                            horas_semana.append(
+                                self.shifts[(emp_idx, dia, turno_id)] * int(turno.duracion_horas)
+                            )
 
-                self.model.Add(
-                    sum(horas_semana) <= int(empleado.horas_maximas_semanales)
-                )
+                if horas_semana:
+                    self.model.Add(
+                        sum(horas_semana) <= int(empleado.horas_maximas_semanales)
+                    )
 
             # Restricción de horas mensuales
             horas_mes = []
             for dia in self.dias:
                 for turno_id, turno in self.turno_info.items():
-                    horas_mes.append(
-                        self.shifts[(emp_idx, dia, turno_id)] * int(turno.duracion_horas)
-                    )
+                    if (emp_idx, dia, turno_id) in self.shifts:
+                        horas_mes.append(
+                            self.shifts[(emp_idx, dia, turno_id)] * int(turno.duracion_horas)
+                        )
 
-            self.model.Add(
-                sum(horas_mes) <= int(empleado.horas_maximas_mensuales)
-            )
+            if horas_mes:
+                self.model.Add(
+                    sum(horas_mes) <= int(empleado.horas_maximas_mensuales)
+                )
 
     def _aplicar_restricciones_descanso(self):
         """
@@ -275,18 +304,21 @@ class SchedulerORTools:
                     turnos_dia = [
                         self.shifts[(emp_idx, dia, turno_id)]
                         for turno_id in self.turno_info.keys()
+                        if (emp_idx, dia, turno_id) in self.shifts
                     ]
-                    # Crear variable booleana: día_trabajado = 1 si sum(turnos) >= 1
-                    dia_trabajado = self.model.NewBoolVar(f'trabajado_e{emp_idx}_d{dia}')
-                    self.model.Add(sum(turnos_dia) >= 1).OnlyEnforceIf(dia_trabajado)
-                    self.model.Add(sum(turnos_dia) == 0).OnlyEnforceIf(dia_trabajado.Not())
 
-                    dias_trabajados.append(dia_trabajado)
+                    if turnos_dia:
+                        # Crear variable booleana: día_trabajado = 1 si sum(turnos) >= 1
+                        dia_trabajado = self.model.NewBoolVar(f'trabajado_e{emp_idx}_d{dia}')
+                        self.model.Add(sum(turnos_dia) >= 1).OnlyEnforceIf(dia_trabajado)
+                        self.model.Add(sum(turnos_dia) == 0).OnlyEnforceIf(dia_trabajado.Not())
+                        dias_trabajados.append(dia_trabajado)
 
                 # Máximo de días trabajados = días de la semana - días de descanso requeridos
-                max_dias_trabajados = len(semana) - restricciones.dias_descanso_semana
-                if max_dias_trabajados > 0:
-                    self.model.Add(sum(dias_trabajados) <= max_dias_trabajados)
+                if dias_trabajados:
+                    max_dias_trabajados = len(semana) - restricciones.dias_descanso_semana
+                    if max_dias_trabajados > 0:
+                        self.model.Add(sum(dias_trabajados) <= max_dias_trabajados)
 
     def _aplicar_restricciones_festivos_personales(self):
         """
@@ -299,7 +331,8 @@ class SchedulerORTools:
                 if festivo in self.dias:
                     # No trabajar en festivo personal
                     for turno_id in self.turno_info.keys():
-                        self.model.Add(self.shifts[(emp_idx, festivo, turno_id)] == 0)
+                        if (emp_idx, festivo, turno_id) in self.shifts:
+                            self.model.Add(self.shifts[(emp_idx, festivo, turno_id)] == 0)
 
     def _aplicar_ajustes_fijos(self, ajustes_fijos: Dict[str, Dict[str, str]]):
         """
@@ -320,13 +353,20 @@ class SchedulerORTools:
                 if dia not in self.dias or turno_id not in self.turno_info:
                     continue
 
+                # Verificar que la variable existe
+                if (emp_idx, dia, turno_id) not in self.shifts:
+                    logger.warning(f"No se puede fijar turno {turno_id} para {empleado_id} en {dia}: turno no válido para ese día")
+                    continue
+
                 # Fijar este turno
                 self.model.Add(self.shifts[(emp_idx, dia, turno_id)] == 1)
 
-                # Asegurar que no tiene otros turnos ese día
-                for otro_turno_id in self.turno_info.keys():
-                    if otro_turno_id != turno_id:
-                        self.model.Add(self.shifts[(emp_idx, dia, otro_turno_id)] == 0)
+                # Asegurar que no tiene otros turnos ese día que se solapen
+                turno_fijo = self.turno_info[turno_id]
+                for otro_turno_id, otro_turno in self.turno_info.items():
+                    if otro_turno_id != turno_id and (emp_idx, dia, otro_turno_id) in self.shifts:
+                        if turno_fijo.se_solapa_con(otro_turno):
+                            self.model.Add(self.shifts[(emp_idx, dia, otro_turno_id)] == 0)
 
     def _definir_funcion_objetivo(self):
         """
@@ -357,7 +397,7 @@ class SchedulerORTools:
             guardias = []
             for dia in self.dias:
                 for turno_id, turno in self.turno_info.items():
-                    if turno.tipo == TipoTurno.GUARDIA:
+                    if turno.tipo == TipoTurno.GUARDIA and (emp_idx, dia, turno_id) in self.shifts:
                         guardias.append(self.shifts[(emp_idx, dia, turno_id)])
 
             if guardias:
@@ -386,13 +426,15 @@ class SchedulerORTools:
             horas = []
             for dia in self.dias:
                 for turno_id, turno in self.turno_info.items():
-                    horas.append(
-                        self.shifts[(emp_idx, dia, turno_id)] * int(turno.duracion_horas)
-                    )
+                    if (emp_idx, dia, turno_id) in self.shifts:
+                        horas.append(
+                            self.shifts[(emp_idx, dia, turno_id)] * int(turno.duracion_horas)
+                        )
 
-            num_horas = self.model.NewIntVar(0, 1000, f'horas_e{emp_idx}')
-            self.model.Add(num_horas == sum(horas))
-            horas_por_empleado.append(num_horas)
+            if horas:
+                num_horas = self.model.NewIntVar(0, 1000, f'horas_e{emp_idx}')
+                self.model.Add(num_horas == sum(horas))
+                horas_por_empleado.append(num_horas)
 
         if horas_por_empleado:
             max_horas = self.model.NewIntVar(0, 1000, 'max_horas')
@@ -408,13 +450,8 @@ class SchedulerORTools:
 
         # 3. Maximizar cobertura de turnos (término básico fundamental)
         # Incentiva asignar turnos para cubrir las necesidades
-        peso_cobertura = pesos.get('cobertura', 20)
-        for dia in self.dias:
-            for turno_id in self.turno_info.keys():
-                for emp_idx in range(self.num_empleados):
-                    terminos_objetivo.append(
-                        int(peso_cobertura) * self.shifts[(emp_idx, dia, turno_id)]
-                    )
+        # NOTA: Ya no es necesario porque la restricción de cobertura es EXACTA (==)
+        # El solver automáticamente asignará exactamente trabajadoresMinimos empleados
 
         # 4. Maximizar cumplimiento de preferencias
         # (bonificar turnos favoritos y días libres preferidos)
@@ -422,7 +459,7 @@ class SchedulerORTools:
             if empleado.turnos_favoritos:
                 for dia in self.dias:
                     for turno_id in empleado.turnos_favoritos:
-                        if turno_id in self.turno_info:
+                        if turno_id in self.turno_info and (emp_idx, dia, turno_id) in self.shifts:
                             terminos_objetivo.append(
                                 int(peso_preferencias) * self.shifts[(emp_idx, dia, turno_id)]
                             )

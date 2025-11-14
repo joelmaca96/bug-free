@@ -43,6 +43,54 @@ class Turno:
     hora_fin: str  # HH:MM
     duracion_horas: float
     tipo: TipoTurno
+    dias_semana_validos: List[int] = field(default_factory=list)  # 1=Lunes, 7=Domingo (ISO weekday)
+    fecha_especifica: Optional[str] = None  # Para turnos de guardia en fechas específicas (YYYY-MM-DD)
+
+    def es_valido_para_dia(self, fecha: str) -> bool:
+        """
+        Verificar si este turno es válido para una fecha específica
+
+        Args:
+            fecha: Fecha en formato YYYY-MM-DD
+
+        Returns:
+            True si el turno es válido para ese día de la semana o fecha específica
+        """
+        # Si es un turno de guardia con fecha específica, solo es válido ese día
+        if self.fecha_especifica:
+            return fecha == self.fecha_especifica
+
+        # Si no hay restricción de días, es válido para cualquier día
+        if not self.dias_semana_validos:
+            return True
+
+        from datetime import datetime
+        fecha_obj = datetime.strptime(fecha, '%Y-%m-%d')
+        dia_semana = fecha_obj.isoweekday()  # 1=Lunes, 7=Domingo
+        return dia_semana in self.dias_semana_validos
+
+    def se_solapa_con(self, otro_turno: 'Turno') -> bool:
+        """
+        Verificar si este turno se solapa temporalmente con otro
+
+        Args:
+            otro_turno: Otro turno para comparar
+
+        Returns:
+            True si hay solapamiento de horarios
+        """
+        def hora_a_minutos(hora_str: str) -> int:
+            """Convertir HH:MM a minutos desde medianoche"""
+            h, m = map(int, hora_str.split(':'))
+            return h * 60 + m
+
+        inicio1 = hora_a_minutos(self.hora_inicio)
+        fin1 = hora_a_minutos(self.hora_fin)
+        inicio2 = hora_a_minutos(otro_turno.hora_inicio)
+        fin2 = hora_a_minutos(otro_turno.hora_fin)
+
+        # Hay solapamiento si un turno comienza antes de que termine el otro
+        return not (fin1 <= inicio2 or fin2 <= inicio1)
 
 
 @dataclass
