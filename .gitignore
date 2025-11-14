@@ -47,3 +47,6 @@ ui-debug.log*
 # Temporary files
 .tmp
 tmp/
+
+*.pyc
+scheduler-service/serviceAccountKey.json

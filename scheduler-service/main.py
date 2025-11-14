@@ -5,6 +5,15 @@ import os
 import logging
 from flask import Flask, request, jsonify
 from flask_cors import CORS
+from dotenv import load_dotenv
+import certifi
+
+# Cargar variables de entorno desde .env
+load_dotenv()
+
+# Configurar certificados SSL para requests (soluciona problemas en Windows)
+os.environ['SSL_CERT_FILE'] = certifi.where()
+os.environ['REQUESTS_CA_BUNDLE'] = certifi.where()
 
 from models import (
     Empleado,
@@ -103,9 +112,15 @@ def generar_horarios():
         if not config_data:
             return jsonify({'error': 'No se encontró configuración'}), 404
 
+        logger.info(f"Configuración leída: {len(config_data.get('turnos', {}))} turnos")
+        logger.debug(f"Turnos: {config_data.get('turnos', {})}")
+
         # Parsear configuración
         configuracion_turnos = _parsear_configuracion_turnos(config_data)
         configuracion_algoritmo = _parsear_configuracion_algoritmo(config_data)
+
+        logger.info(f"ConfiguracionTurnos: {len(configuracion_turnos.turnos)} turnos parseados")
+        logger.debug(f"Turnos parseados: {configuracion_turnos.turnos}")
 
         # Crear generador
         scheduler = SchedulerORTools(
@@ -126,6 +141,9 @@ def generar_horarios():
 
         # Guardar en Firebase si fue exitoso
         if resultado.estado == 'success':
+            logger.info(f"Horarios generados: {len(resultado.horarios)} empleados con horarios")
+            logger.debug(f"Detalle de horarios: {resultado.horarios}")
+
             firebase_client.guardar_horarios(
                 empresa_id=empresa_id,
                 mes=mes,

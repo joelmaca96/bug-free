@@ -406,7 +406,17 @@ class SchedulerORTools:
 
             terminos_objetivo.append(-int(peso_equidad_horas) * diff_horas)
 
-        # 3. Maximizar cumplimiento de preferencias
+        # 3. Maximizar cobertura de turnos (término básico fundamental)
+        # Incentiva asignar turnos para cubrir las necesidades
+        peso_cobertura = pesos.get('cobertura', 20)
+        for dia in self.dias:
+            for turno_id in self.turno_info.keys():
+                for emp_idx in range(self.num_empleados):
+                    terminos_objetivo.append(
+                        int(peso_cobertura) * self.shifts[(emp_idx, dia, turno_id)]
+                    )
+
+        # 4. Maximizar cumplimiento de preferencias
         # (bonificar turnos favoritos y días libres preferidos)
         for emp_idx, empleado in enumerate(self.empleados):
             if empleado.turnos_favoritos:
