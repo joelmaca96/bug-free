@@ -1,370 +1,24 @@
 /**
- * Cloud Functions para Apoteke
- *
- * Funciones principales:
- * - Envío de emails de notificación
- * - Generación de reportes PDF
- * - Cálculo y distribución de turnos
- * - Eliminación de usuarios de Firebase Auth
+ * Cloud Functions para Sistema de Generación de Horarios
  */
 
-// Cargar variables de entorno desde .env (solo para desarrollo local)
-require('dotenv').config();
-
-const {onDocumentCreated} = require('firebase-functions/v2/firestore');
 const {onCall, HttpsError} = require('firebase-functions/v2/https');
 const admin = require('firebase-admin');
-const nodemailer = require('nodemailer');
-const cors = require('cors');
 const axios = require('axios');
 
 admin.initializeApp();
 
-// Configurar CORS para permitir solicitudes desde localhost y producción
-const corsHandler = cors({
-  origin: [
-    'http://localhost:5173',
-    'http://localhost:3000',
-    'https://agapitodisousa.com',
-    'https://kroma-ai.web.app',
-    'https://kroma-ai.firebaseapp.com'
-  ],
-  credentials: true
-});
-
-// Helper function to get transporter (evaluated at runtime)
-function getTransporter() {
-  return nodemailer.createTransport({
-    service: 'gmail', // o el servicio de email que uses
-    auth: {
-      user: process.env.EMAIL_USER || 'your-email@gmail.com',
-      pass: process.env.EMAIL_PASSWORD || 'your-password',
-    },
-  });
-}
-
-/**
- * Enviar email de notificación cuando se crea un nuevo admin
- */
-exports.sendAdminCreatedEmail = onDocumentCreated('usuarios/{userId}', async (event) => {
-    const snap = event.data;
-    const userData = snap.data();
-
-    // Solo enviar email si es un admin
-    if (userData.rol !== 'admin') {
-      return null;
-    }
-
-    const mailOptions = {
-      from: 'AgapitoDiSousa <noreply@agapitodisousa.com>',
-      to: userData.datosPersonales.email,
-      subject: 'Bienvenido a AgapitoDiSousa - Cuenta de Administrador Creada',
-      html: `
-        <h2>¡Bienvenido a AgapitoDiSousa!</h2>
-        <p>Hola ${userData.datosPersonales.nombre} ${userData.datosPersonales.apellidos},</p>
-        <p>Se ha creado una cuenta de administrador para ti en el sistema AgapitoDiSousa.</p>
-
-        <h3>Detalles de tu cuenta:</h3>
-        <ul>
-          <li><strong>Email:</strong> ${userData.datosPersonales.email}</li>
-          <li><strong>Rol:</strong> Administrador</li>
-        </ul>
-
-        <p>Puedes acceder al sistema usando tu email y la contraseña que te fue proporcionada.</p>
-        <p><a href="https://agapitodisousa.com/login">Ir al sistema</a></p>
-
-        <p>Si tienes alguna pregunta, no dudes en contactarnos.</p>
-
-        <p>Saludos,<br>El equipo de AgapitoDiSousa</p>
-      `,
-    };
-
-    try {
-      const transporter = getTransporter();
-      await transporter.sendMail(mailOptions);
-      console.log('Email sent to admin:', userData.datosPersonales.email);
-      return null;
-    } catch (error) {
-      console.error('Error sending email:', error);
-      return null;
-    }
-  });
-
-/**
- * Enviar email de notificación cuando se crea un nuevo gestor
- */
-exports.sendGestorCreatedEmail = onDocumentCreated('usuarios/{userId}', async (event) => {
-    const snap = event.data;
-    const userData = snap.data();
-
-    // Solo enviar email si es un gestor
-    if (userData.rol !== 'gestor') {
-      return null;
-    }
-
-    const mailOptions = {
-      from: 'AgapitoDiSousa <noreply@agapitodisousa.com>',
-      to: userData.datosPersonales.email,
-      subject: 'Bienvenido a AgapitoDiSousa - Cuenta de Gestor Creada',
-      html: `
-        <h2>¡Bienvenido a AgapitoDiSousa!</h2>
-        <p>Hola ${userData.datosPersonales.nombre} ${userData.datosPersonales.apellidos},</p>
-        <p>Se ha creado una cuenta de gestor para ti en el sistema AgapitoDiSousa.</p>
-
-        <h3>Detalles de tu cuenta:</h3>
-        <ul>
-          <li><strong>Email:</strong> ${userData.datosPersonales.email}</li>
-          <li><strong>Rol:</strong> Gestor</li>
-        </ul>
-
-        <p>Como gestor, podrás:</p>
-        <ul>
-          <li>Gestionar empleados de tu farmacia</li>
-          <li>Configurar horarios y turnos</li>
-          <li>Generar calendarios automáticos</li>
-          <li>Exportar y enviar horarios</li>
-        </ul>
-
-        <p>Puedes acceder al sistema usando tu email y la contraseña que te fue proporcionada.</p>
-        <p><a href="https://agapitodisousa.com/login">Ir al sistema</a></p>
-
-        <p>Si tienes alguna pregunta, no dudes en contactarnos.</p>
-
-        <p>Saludos,<br>El equipo de AgapitoDiSousa</p>
-      `,
-    };
-
-    try {
-      const transporter = getTransporter();
-      await transporter.sendMail(mailOptions);
-      console.log('Email sent to gestor:', userData.datosPersonales.email);
-      return null;
-    } catch (error) {
-      console.error('Error sending email:', error);
-      return null;
-    }
-  });
-
-/**
- * Enviar email de notificación cuando se crea un nuevo empleado
- */
-exports.sendEmpleadoCreatedEmail = onDocumentCreated('usuarios/{userId}', async (event) => {
-    const snap = event.data;
-    const userData = snap.data();
-
-    // Solo enviar email si es un empleado
-    if (userData.rol !== 'empleado') {
-      return null;
-    }
-
-    const mailOptions = {
-      from: 'AgapitoDiSousa <noreply@agapitodisousa.com>',
-      to: userData.datosPersonales.email,
-      subject: 'Bienvenido a AgapitoDiSousa',
-      html: `
-        <h2>¡Bienvenido a AgapitoDiSousa!</h2>
-        <p>Hola ${userData.datosPersonales.nombre} ${userData.datosPersonales.apellidos},</p>
-        <p>Se ha creado una cuenta para ti en el sistema AgapitoDiSousa.</p>
-
-        <h3>Detalles de tu cuenta:</h3>
-        <ul>
-          <li><strong>Email:</strong> ${userData.datosPersonales.email}</li>
-          <li><strong>Rol:</strong> Empleado</li>
-        </ul>
-
-        <p>Podrás acceder al sistema para consultar:</p>
-        <ul>
-          <li>Tu calendario de turnos</li>
-          <li>Tus estadísticas de horas trabajadas</li>
-          <li>Tus turnos programados</li>
-        </ul>
-
-        <p>Puedes acceder al sistema usando tu email y la contraseña que te fue proporcionada.</p>
-        <p><a href="https://agapitodisousa.com/login">Ir al sistema</a></p>
-
-        <p>Si tienes alguna pregunta, contacta con tu gestor.</p>
-
-        <p>Saludos,<br>El equipo de AgapitoDiSousa</p>
-      `,
-    };
-
-    try {
-      const transporter = getTransporter();
-      await transporter.sendMail(mailOptions);
-      console.log('Email sent to empleado:', userData.datosPersonales.email);
-      return null;
-    } catch (error) {
-      console.error('Error sending email:', error);
-      return null;
-    }
-  });
-
-/**
- * Callable function para enviar horario por email
- */
-exports.sendScheduleEmail = onCall({
-  cors: [
-    'http://localhost:5173',
-    'http://localhost:3000',
-    'https://agapitodisousa.com',
-    'https://kroma-ai.web.app',
-    'https://kroma-ai.firebaseapp.com'
-  ]
-}, async (request) => {
-  // Verificar que el usuario está autenticado
-  if (!request.auth) {
-    throw new HttpsError(
-      'unauthenticated',
-      'Usuario debe estar autenticado'
-    );
-  }
-
-  const data = request.data;
-
-  const { empleadoId, fechaInicio, fechaFin, farmaciaId } = data;
-
-  try {
-    // Obtener datos del empleado
-    const empleadoDoc = await admin.firestore().doc(`usuarios/${empleadoId}`).get();
-    if (!empleadoDoc.exists) {
-      throw new HttpsError('not-found', 'Empleado no encontrado');
-    }
-
-    const empleado = empleadoDoc.data();
-
-    // Obtener turnos del empleado en el rango de fechas
-    const turnosSnapshot = await admin
-      .firestore()
-      .collection(`calendarios/${farmaciaId}/turnos`)
-      .where('empleadoId', '==', empleadoId)
-      .where('fecha', '>=', fechaInicio)
-      .where('fecha', '<=', fechaFin)
-      .get();
-
-    const turnos = turnosSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-
-    // Generar HTML con los turnos
-    let turnosHtml = '<table border="1" cellpadding="5" cellspacing="0" style="border-collapse: collapse; width: 100%;">';
-    turnosHtml += '<tr><th>Fecha</th><th>Hora Inicio</th><th>Hora Fin</th><th>Tipo</th></tr>';
-
-    turnos.forEach(turno => {
-      turnosHtml += `
-        <tr>
-          <td>${turno.fecha}</td>
-          <td>${turno.horaInicio}:00</td>
-          <td>${turno.horaFin}:00</td>
-          <td>${turno.tipo}</td>
-        </tr>
-      `;
-    });
-
-    turnosHtml += '</table>';
-
-    const mailOptions = {
-      from: 'AgapitoDiSousa <noreply@agapitodisousa.com>',
-      to: empleado.datosPersonales.email,
-      subject: `Tu horario del ${fechaInicio} al ${fechaFin}`,
-      html: `
-        <h2>Tu horario de trabajo</h2>
-        <p>Hola ${empleado.datosPersonales.nombre},</p>
-        <p>Aquí está tu horario de trabajo del <strong>${fechaInicio}</strong> al <strong>${fechaFin}</strong>:</p>
-
-        ${turnosHtml}
-
-        <p>Total de turnos: ${turnos.length}</p>
-
-        <p>Si tienes alguna pregunta sobre tu horario, contacta con tu gestor.</p>
-
-        <p>Saludos,<br>El equipo de AgapitoDiSousa</p>
-      `,
-    };
-
-    const transporter = getTransporter();
-    await transporter.sendMail(mailOptions);
-
-    return { success: true, message: 'Email enviado correctamente' };
-  } catch (error) {
-    console.error('Error sending schedule email:', error);
-    throw new HttpsError('internal', 'Error al enviar el email');
-  }
-});
-
-/**
- * Callable function para eliminar usuario de Firebase Auth
- * Solo puede ser llamada por SuperUser o Admin
- */
-exports.deleteUserAuth = onCall({
-  cors: [
-    'http://localhost:5173',
-    'http://localhost:3000',
-    'https://agapitodisousa.com',
-    'https://kroma-ai.web.app',
-    'https://kroma-ai.firebaseapp.com'
-  ]
-}, async (request) => {
-  // Verificar que el usuario está autenticado
-  if (!request.auth) {
-    throw new HttpsError(
-      'unauthenticated',
-      'Usuario debe estar autenticado'
-    );
-  }
-
-  // Verificar que el usuario es SuperUser o Admin
-  const callerDoc = await admin.firestore().doc(`usuarios/${request.auth.uid}`).get();
-  if (!callerDoc.exists) {
-    throw new HttpsError('not-found', 'Usuario no encontrado');
-  }
-
-  const caller = callerDoc.data();
-  if (caller.rol !== 'superuser' && caller.rol !== 'admin') {
-    throw new HttpsError(
-      'permission-denied',
-      'Solo SuperUser o Admin pueden eliminar usuarios'
-    );
-  }
-
-  const { uid } = request.data;
-
-  if (!uid) {
-    throw new HttpsError('invalid-argument', 'UID es requerido');
-  }
-
-  try {
-    // Eliminar usuario de Firebase Auth
-    await admin.auth().deleteUser(uid);
-
-    // Eliminar documento de Firestore
-    await admin.firestore().doc(`usuarios/${uid}`).delete();
-
-    return { success: true, message: 'Usuario eliminado correctamente' };
-  } catch (error) {
-    console.error('Error deleting user:', error);
-    throw new HttpsError('internal', 'Error al eliminar el usuario');
-  }
-});
-
 /**
  * Callable function para generar horarios usando OR-Tools (Cloud Run)
- * Orquesta la llamada al servicio Python de generación de horarios
  */
 exports.generarHorarios = onCall({
-  cors: [
-    'http://localhost:5173',
-    'http://localhost:3000',
-    'https://agapitodisousa.com',
-    'https://kroma-ai.web.app',
-    'https://kroma-ai.firebaseapp.com'
-  ],
+  region: 'europe-west1',
+  cors: true,
   memory: '2GiB',
   timeoutSeconds: 540
 }, async (request) => {
-  // Verificar autenticación
   if (!request.auth) {
-    throw new HttpsError(
-      'unauthenticated',
-      'Usuario debe estar autenticado'
-    );
+    throw new HttpsError('unauthenticated', 'Usuario debe estar autenticado');
   }
 
   const data = request.data;
@@ -376,37 +30,33 @@ exports.generarHorarios = onCall({
 
   try {
     console.log(`[generarHorarios] Iniciando para empresa ${empresaId}, mes ${mes}`);
+    console.log(`[generarHorarios] Usuario autenticado: ${request.auth.uid}`);
 
-    // Verificar permisos del usuario
-    const callerDoc = await admin.firestore().doc(`usuarios/${request.auth.uid}`).get();
-    if (!callerDoc.exists) {
-      throw new HttpsError('not-found', 'Usuario no encontrado');
+    // Verificar permisos - Usar Realtime Database
+    const callerRef = admin.database().ref(`usuarios/${request.auth.uid}`);
+    const callerSnapshot = await callerRef.once('value');
+    const caller = callerSnapshot.val();
+
+    console.log(`[generarHorarios] Usuario existe en Realtime DB: ${caller !== null}`);
+
+    if (!caller) {
+      throw new HttpsError('not-found', `Usuario no encontrado en Realtime DB: ${request.auth.uid}`);
     }
 
-    const caller = callerDoc.data();
-
-    // Solo admin, gestor y superuser pueden generar horarios
     if (!['superuser', 'admin', 'gestor'].includes(caller.rol)) {
-      throw new HttpsError(
-        'permission-denied',
-        'No tienes permisos para generar horarios'
-      );
+      throw new HttpsError('permission-denied', 'No tienes permisos para generar horarios');
     }
 
-    // Verificar que el usuario pertenece a la empresa
     if (caller.rol !== 'superuser' && caller.empresaId !== empresaId) {
-      throw new HttpsError(
-        'permission-denied',
-        'No tienes acceso a esta empresa'
-      );
+      throw new HttpsError('permission-denied', 'No tienes acceso a esta empresa');
     }
 
     // URL del servicio Cloud Run
-    const schedulerServiceUrl = process.env.SCHEDULER_SERVICE_URL || 'http://localhost:8080';
+    const serviceUrl = process.env.SCHEDULER_SERVICE_URL || 'http://localhost:8080';
 
     // Llamar al servicio de generación
     const response = await axios.post(
-      `${schedulerServiceUrl}/generar-horarios`,
+      `${serviceUrl}/generar-horarios`,
       {
         empresaId,
         mes,
@@ -414,16 +64,13 @@ exports.generarHorarios = onCall({
         opciones: opciones || {}
       },
       {
-        timeout: 500000, // 500 segundos
-        headers: {
-          'Content-Type': 'application/json'
-        }
+        timeout: 500000,
+        headers: { 'Content-Type': 'application/json' }
       }
     );
 
     console.log(`[generarHorarios] Respuesta recibida: ${response.data.estado}`);
 
-    // Retornar resultado
     return {
       success: response.data.estado === 'success',
       horarioId: mes,
@@ -437,17 +84,14 @@ exports.generarHorarios = onCall({
     console.error('[generarHorarios] Error:', error);
 
     if (error.response) {
-      // Error del servicio Cloud Run
       throw new HttpsError(
         'internal',
         error.response.data.error || 'Error al generar horarios',
         { detalle: error.response.data.detalle }
       );
     } else if (error.code) {
-      // Error de Firebase
       throw error;
     } else {
-      // Error de red u otro
       throw new HttpsError('internal', 'Error al conectar con el servicio de generación');
     }
   }
@@ -457,83 +101,55 @@ exports.generarHorarios = onCall({
  * Callable function para ajustar horarios manualmente
  */
 exports.ajustarHorario = onCall({
-  cors: [
-    'http://localhost:5173',
-    'http://localhost:3000',
-    'https://agapitodisousa.com',
-    'https://kroma-ai.web.app',
-    'https://kroma-ai.firebaseapp.com'
-  ],
+  region: 'europe-west1',
+  cors: true,
   memory: '2GiB',
   timeoutSeconds: 540
 }, async (request) => {
-  // Verificar autenticación
   if (!request.auth) {
-    throw new HttpsError(
-      'unauthenticated',
-      'Usuario debe estar autenticado'
-    );
+    throw new HttpsError('unauthenticated', 'Usuario debe estar autenticado');
   }
 
   const data = request.data;
   const { empresaId, mes, ajustes } = data;
 
   if (!empresaId || !mes || !ajustes) {
-    throw new HttpsError(
-      'invalid-argument',
-      'empresaId, mes y ajustes son requeridos'
-    );
+    throw new HttpsError('invalid-argument', 'empresaId, mes y ajustes son requeridos');
   }
 
   try {
     console.log(`[ajustarHorario] Iniciando para empresa ${empresaId}, mes ${mes}`);
 
-    // Verificar permisos del usuario
-    const callerDoc = await admin.firestore().doc(`usuarios/${request.auth.uid}`).get();
-    if (!callerDoc.exists) {
+    // Verificar permisos - Usar Realtime Database
+    const callerRef = admin.database().ref(`usuarios/${request.auth.uid}`);
+    const callerSnapshot = await callerRef.once('value');
+    const caller = callerSnapshot.val();
+
+    if (!caller) {
       throw new HttpsError('not-found', 'Usuario no encontrado');
     }
 
-    const caller = callerDoc.data();
-
-    // Solo admin, gestor y superuser pueden ajustar horarios
     if (!['superuser', 'admin', 'gestor'].includes(caller.rol)) {
-      throw new HttpsError(
-        'permission-denied',
-        'No tienes permisos para ajustar horarios'
-      );
+      throw new HttpsError('permission-denied', 'No tienes permisos para ajustar horarios');
     }
 
-    // Verificar que el usuario pertenece a la empresa
     if (caller.rol !== 'superuser' && caller.empresaId !== empresaId) {
-      throw new HttpsError(
-        'permission-denied',
-        'No tienes acceso a esta empresa'
-      );
+      throw new HttpsError('permission-denied', 'No tienes acceso a esta empresa');
     }
 
-    // URL del servicio Cloud Run
-    const schedulerServiceUrl = process.env.SCHEDULER_SERVICE_URL || 'http://localhost:8080';
+    const serviceUrl = process.env.SCHEDULER_SERVICE_URL || 'http://localhost:8080';
 
-    // Llamar al servicio de ajuste
     const response = await axios.post(
-      `${schedulerServiceUrl}/ajustar-horarios`,
-      {
-        empresaId,
-        mes,
-        ajustes
-      },
+      `${serviceUrl}/ajustar-horarios`,
+      { empresaId, mes, ajustes },
       {
         timeout: 500000,
-        headers: {
-          'Content-Type': 'application/json'
-        }
+        headers: { 'Content-Type': 'application/json' }
       }
     );
 
     console.log(`[ajustarHorario] Respuesta recibida: ${response.data.estado}`);
 
-    // Retornar resultado
     return {
       success: response.data.estado === 'success',
       horarioId: mes,
@@ -563,20 +179,11 @@ exports.ajustarHorario = onCall({
  * Callable function para validar configuración
  */
 exports.validarConfiguracion = onCall({
-  cors: [
-    'http://localhost:5173',
-    'http://localhost:3000',
-    'https://agapitodisousa.com',
-    'https://kroma-ai.web.app',
-    'https://kroma-ai.firebaseapp.com'
-  ]
+  region: 'europe-west1',
+  cors: true
 }, async (request) => {
-  // Verificar autenticación
   if (!request.auth) {
-    throw new HttpsError(
-      'unauthenticated',
-      'Usuario debe estar autenticado'
-    );
+    throw new HttpsError('unauthenticated', 'Usuario debe estar autenticado');
   }
 
   const data = request.data;
@@ -589,37 +196,27 @@ exports.validarConfiguracion = onCall({
   try {
     console.log(`[validarConfiguracion] Validando empresa ${empresaId}, mes ${mes}`);
 
-    // Verificar permisos del usuario
-    const callerDoc = await admin.firestore().doc(`usuarios/${request.auth.uid}`).get();
-    if (!callerDoc.exists) {
+    // Verificar permisos - Usar Realtime Database
+    const callerRef = admin.database().ref(`usuarios/${request.auth.uid}`);
+    const callerSnapshot = await callerRef.once('value');
+    const caller = callerSnapshot.val();
+
+    if (!caller) {
       throw new HttpsError('not-found', 'Usuario no encontrado');
     }
 
-    const caller = callerDoc.data();
-
-    // Solo admin, gestor y superuser pueden validar
     if (!['superuser', 'admin', 'gestor'].includes(caller.rol)) {
-      throw new HttpsError(
-        'permission-denied',
-        'No tienes permisos para validar configuración'
-      );
+      throw new HttpsError('permission-denied', 'No tienes permisos para validar configuración');
     }
 
-    // URL del servicio Cloud Run
-    const schedulerServiceUrl = process.env.SCHEDULER_SERVICE_URL || 'http://localhost:8080';
+    const serviceUrl = process.env.SCHEDULER_SERVICE_URL || 'http://localhost:8080';
 
-    // Llamar al servicio de validación
     const response = await axios.post(
-      `${schedulerServiceUrl}/validar-configuracion`,
-      {
-        empresaId,
-        mes
-      },
+      `${serviceUrl}/validar-configuracion`,
+      { empresaId, mes },
       {
         timeout: 30000,
-        headers: {
-          'Content-Type': 'application/json'
-        }
+        headers: { 'Content-Type': 'application/json' }
       }
     );
 
@@ -645,5 +242,46 @@ exports.validarConfiguracion = onCall({
     } else {
       throw new HttpsError('internal', 'Error al conectar con el servicio de validación');
     }
+  }
+});
+
+/**
+ * Callable function para eliminar usuario de Firebase Auth
+ */
+exports.deleteUserAuth = onCall({
+  region: 'europe-west1',
+  cors: true
+}, async (request) => {
+  if (!request.auth) {
+    throw new HttpsError('unauthenticated', 'Usuario debe estar autenticado');
+  }
+
+  // Verificar permisos - Usar Realtime Database
+  const callerRef = admin.database().ref(`usuarios/${request.auth.uid}`);
+  const callerSnapshot = await callerRef.once('value');
+  const caller = callerSnapshot.val();
+
+  if (!caller) {
+    throw new HttpsError('not-found', 'Usuario no encontrado');
+  }
+
+  if (caller.rol !== 'superuser' && caller.rol !== 'admin') {
+    throw new HttpsError('permission-denied', 'Solo SuperUser o Admin pueden eliminar usuarios');
+  }
+
+  const { uid } = request.data;
+
+  if (!uid) {
+    throw new HttpsError('invalid-argument', 'UID es requerido');
+  }
+
+  try {
+    await admin.auth().deleteUser(uid);
+    await admin.database().ref(`usuarios/${uid}`).remove();
+
+    return { success: true, message: 'Usuario eliminado correctamente' };
+  } catch (error) {
+    console.error('Error deleting user:', error);
+    throw new HttpsError('internal', 'Error al eliminar el usuario');
   }
 });

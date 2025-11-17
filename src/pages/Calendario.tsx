@@ -74,7 +74,6 @@ const CalendarioPage: React.FC = () => {
   const [generating, setGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
-  const [useORTools, setUseORTools] = useState(true); // Usar OR-Tools por defecto
 
   // Dialog states
   const [openGenerateDialog, setOpenGenerateDialog] = useState(false);
@@ -213,107 +212,57 @@ const CalendarioPage: React.FC = () => {
       setGenerating(true);
       setError(null);
 
-      if (useORTools) {
-        // NUEVO SISTEMA: Usar OR-Tools
-        console.log('[Calendario] Usando nuevo sistema OR-Tools');
+      // Usar OR-Tools
+      console.log('[Calendario] Usando sistema OR-Tools');
 
-        // Obtener mes en formato YYYY-MM
-        const mes = format(new Date(generatePeriod.inicio), 'yyyy-MM');
+      // Obtener mes en formato YYYY-MM
+      const mes = format(new Date(generatePeriod.inicio), 'yyyy-MM');
 
-        // Si no es modo completar, limpiar turnos existentes
-        if (!modoCompletar) {
-          await deleteTurnosByDateRange(
-            user.farmaciaId,
-            generatePeriod.inicio,
-            generatePeriod.fin
-          );
-        }
-
-        // Llamar al nuevo sistema
-        const resultado = await schedulerEngine.generarHorarios(
-          user.empresaId,
-          mes,
-          empleados.map(e => e.uid),
-          {
-            timeout: 60,
-            // TODO: Pasar ajustes fijos si es modo completar
-          }
+      // Si no es modo completar, limpiar turnos existentes
+      if (!modoCompletar) {
+        await deleteTurnosByDateRange(
+          user.farmaciaId,
+          generatePeriod.inicio,
+          generatePeriod.fin
         );
-
-        if (!resultado.success) {
-          throw new Error(resultado.mensaje || 'Error al generar horarios');
-        }
-
-        // Los horarios ya están guardados por el servicio Python
-        // Solo necesitamos recargar la vista
-
-        // Recargar turnos del mes visible
-        const calendarApi = calendarRef.current?.getApi();
-        const currentDate = calendarApi?.getDate() || new Date();
-        await loadTurnosForMonth(currentDate, true);
-
-        const equidad = (resultado.metricas.distribucionEquitativa * 100).toFixed(1);
-        setSuccess(
-          `Calendario generado exitosamente con OR-Tools. ` +
-          `Equidad: ${equidad}%. ` +
-          `Tiempo: ${resultado.metricas.tiempoEjecucion.toFixed(1)}s. ` +
-          `Estado: ${resultado.metricas.estadoSolver || 'OK'}`
-        );
-
-        if (resultado.sugerencias && resultado.sugerencias.length > 0) {
-          console.log('[Calendario] Sugerencias:', resultado.sugerencias);
-        }
-
-        setOpenGenerateDialog(false);
-      } else {
-        // SISTEMA ANTIGUO: Algoritmo greedy local
-        console.log('[Calendario] Usando algoritmo antiguo (greedy)');
-
-        const config = await getOrCreateConfiguracion(user.uid, user.farmaciaId);
-        const fechaInicio = new Date(generatePeriod.inicio);
-        const fechaFin = new Date(generatePeriod.fin);
-
-        let turnosExistentes: Turno[] = [];
-
-        if (modoCompletar) {
-          turnosExistentes = await getTurnosByDateRange(
-            user.farmaciaId,
-            generatePeriod.inicio,
-            generatePeriod.fin
-          );
-        } else {
-          await deleteTurnosByDateRange(
-            user.farmaciaId,
-            generatePeriod.inicio,
-            generatePeriod.fin
-          );
-        }
-
-        const resultado = await executeSchedulingAlgorithm(
-          config,
-          farmacia,
-          empleados,
-          fechaInicio,
-          fechaFin,
-          turnosExistentes
-        );
-
-        await createTurnosBatch(user.farmaciaId, user.empresaId, resultado.turnos);
-
-        const calendarApi = calendarRef.current?.getApi();
-        const currentDate = calendarApi?.getDate() || new Date();
-        await loadTurnosForMonth(currentDate, true);
-
-        setConflictos(resultado.conflictos);
-
-        const modoTexto = modoCompletar ? 'completado' : 'generado';
-        setSuccess(
-          `Calendario ${modoTexto} (algoritmo antiguo): ${resultado.turnos.length} turnos. ` +
-          `${resultado.conflictos.length} conflictos. ` +
-          `Score: ${resultado.scoreGlobal.toFixed(0)}`
-        );
-        setOpenGenerateDialog(false);
       }
+
+      // Llamar al sistema OR-Tools
+      const resultado = await schedulerEngine.generarHorarios(
+        user.empresaId,
+        mes,
+        empleados.map(e => e.uid),
+        {
+          timeout: 60,
+          // TODO: Pasar ajustes fijos si es modo completar
+        }
+      );
+
+      if (!resultado.success) {
+        throw new Error(resultado.mensaje || 'Error al generar horarios');
+      }
+
+      // Los horarios ya están guardados por el servicio Python
+      // Solo necesitamos recargar la vista
+
+      // Recargar turnos del mes visible
+      const calendarApi = calendarRef.current?.getApi();
+      const currentDate = calendarApi?.getDate() || new Date();
+      await loadTurnosForMonth(currentDate, true);
+
+      const equidad = (resultado.metricas.distribucionEquitativa * 100).toFixed(1);
+      setSuccess(
+        `Calendario generado exitosamente. ` +
+        `Equidad: ${equidad}%. ` +
+        `Tiempo: ${resultado.metricas.tiempoEjecucion.toFixed(1)}s. ` +
+        `Estado: ${resultado.metricas.estadoSolver || 'OK'}`
+      );
+
+      if (resultado.sugerencias && resultado.sugerencias.length > 0) {
+        console.log('[Calendario] Sugerencias:', resultado.sugerencias);
+      }
+
+      setOpenGenerateDialog(false);
     } catch (err: any) {
       const errorMsg = `Error al generar el calendario: ${err.message || err}`;
       setError(errorMsg);
@@ -827,17 +776,6 @@ const CalendarioPage: React.FC = () => {
             <FormControlLabel
               control={
                 <Checkbox
-                  checked={useORTools}
-                  onChange={(e) => setUseORTools(e.target.checked)}
-                />
-              }
-              label="Usar OR-Tools (Recomendado): Algoritmo optimizado con Constraint Programming"
-              sx={{ mt: 2 }}
-            />
-
-            <FormControlLabel
-              control={
-                <Checkbox
                   checked={modoCompletar}
                   onChange={(e) => setModoCompletar(e.target.checked)}
                 />
@@ -845,20 +783,6 @@ const CalendarioPage: React.FC = () => {
               label="Modo completar: mantener turnos existentes y solo llenar espacios vacíos"
               sx={{ mt: 1 }}
             />
-
-            {useORTools && (
-              <Alert severity="info" sx={{ mt: 2 }}>
-                <strong>OR-Tools:</strong> Utilizará Google OR-Tools CP-SAT Solver para generar horarios óptimos
-                que cumplen todas las restricciones duras y maximizan los objetivos de calidad (distribución equitativa,
-                preferencias de empleados, etc.). Puede tardar hasta 60 segundos.
-              </Alert>
-            )}
-
-            {!useORTools && (
-              <Alert severity="warning" sx={{ mt: 2 }}>
-                <strong>Algoritmo antiguo:</strong> Utilizará el algoritmo greedy local (más rápido pero menos óptimo).
-              </Alert>
-            )}
 
             {!modoCompletar && (
               <Alert severity="warning" sx={{ mt: 2 }}>

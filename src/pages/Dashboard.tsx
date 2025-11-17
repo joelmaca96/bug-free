@@ -18,7 +18,7 @@ const Dashboard: React.FC = () => {
         gutterBottom
         sx={{ fontSize: { xs: '1.5rem', sm: '2rem', md: '2.125rem' } }}
       >
-        Bienvenido, {user?.datosPersonales.nombre}
+        Hola, {user?.datosPersonales.nombre}
       </Typography>
       <Typography
         variant="subtitle1"

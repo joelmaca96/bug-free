@@ -103,7 +103,7 @@ export const useSchedulerEngine = () => {
           ResultadoGeneracion
         >(functions, 'generarHorarios');
 
-        setState((prev) => ({ ...prev, progress: 'Generando horarios con OR-Tools...' }));
+        setState((prev) => ({ ...prev, progress: 'Generando horarios...' }));
 
         const result = await generarHorariosFunction({
           empresaId,

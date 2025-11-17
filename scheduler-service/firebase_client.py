@@ -17,15 +17,24 @@ class FirebaseClient:
     def __init__(self):
         """Inicializar el cliente de Firebase"""
         if not firebase_admin._apps:
-            # Verificar si existe el archivo de credenciales
-            cred_path = os.getenv('GOOGLE_APPLICATION_CREDENTIALS', 'serviceAccountKey.json')
             database_url = os.getenv('FIREBASE_DATABASE_URL')
 
             if not database_url:
                 raise ValueError("FIREBASE_DATABASE_URL no está configurada")
 
             try:
-                cred = credentials.Certificate(cred_path)
+                # Intentar usar Application Default Credentials (Cloud Run)
+                # Si no funciona, usar el archivo de credenciales local
+                cred_path = os.getenv('GOOGLE_APPLICATION_CREDENTIALS', 'serviceAccountKey.json')
+
+                # En Cloud Run, usar ADC; en local, usar archivo
+                if os.path.exists(cred_path):
+                    logger.info(f"Usando credenciales desde archivo: {cred_path}")
+                    cred = credentials.Certificate(cred_path)
+                else:
+                    logger.info("Usando Application Default Credentials (Cloud Run)")
+                    cred = credentials.ApplicationDefault()
+
                 firebase_admin.initialize_app(cred, {
                     'databaseURL': database_url
                 })

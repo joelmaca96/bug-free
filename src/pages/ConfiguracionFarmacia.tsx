@@ -9,14 +9,11 @@ import {
   Snackbar,
   Alert,
   CircularProgress,
-  TextField,
-  Tooltip,
 } from '@mui/material';
 import SaveIcon from '@mui/icons-material/Save';
 import ScheduleIcon from '@mui/icons-material/Schedule';
 import LocalHospitalIcon from '@mui/icons-material/LocalHospital';
 import EventIcon from '@mui/icons-material/Event';
-import PeopleIcon from '@mui/icons-material/People';
 import { useAuth } from '@/contexts/AuthContext';
 import { getFarmaciaById, updateFarmacia } from '@/services/farmaciasRealtimeService';
 import { Farmacia, JornadaGuardia, ConfiguracionCobertura } from '@/types';
@@ -145,13 +142,6 @@ const ConfiguracionFarmacia: React.FC = () => {
     }));
   };
 
-  const handleTrabajadoresChange = (value: number) => {
-    setConfiguracion((prev) => ({
-      ...prev,
-      trabajadoresMinimos: value,
-    }));
-  };
-
   const handleConfiguracionesCoberturaChange = (
     configuraciones: ConfiguracionCobertura[]
   ) => {
@@ -227,11 +217,6 @@ const ConfiguracionFarmacia: React.FC = () => {
             label="Festivos Regionales"
             iconPosition="start"
           />
-          <Tab
-            icon={<PeopleIcon />}
-            label="Configuración General"
-            iconPosition="start"
-          />
         </Tabs>
 
         <Box sx={{ p: 3 }}>
@@ -254,30 +239,6 @@ const ConfiguracionFarmacia: React.FC = () => {
               festivos={configuracion.festivosRegionales}
               onChange={handleFestivosChange}
             />
-          </TabPanel>
-
-          <TabPanel value={tabValue} index={3}>
-            <Box sx={{ maxWidth: 400 }}>
-              <Typography variant="h6" gutterBottom>
-                Trabajadores Mínimos (Global)
-              </Typography>
-              <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                Valor por defecto cuando no hay configuración específica por horario
-              </Typography>
-              <Tooltip title="Mínimo de empleados requeridos simultáneamente para operar la farmacia">
-                <TextField
-                  fullWidth
-                  type="number"
-                  label="Trabajadores Mínimos"
-                  value={configuracion.trabajadoresMinimos}
-                  onChange={(e) =>
-                    handleTrabajadoresChange(parseInt(e.target.value) || 1)
-                  }
-                  InputProps={{ inputProps: { min: 1, max: 50 } }}
-                  helperText="Número mínimo de empleados necesarios por turno (si no se define cobertura específica)"
-                />
-              </Tooltip>
-            </Box>
           </TabPanel>
         </Box>
       </Paper>

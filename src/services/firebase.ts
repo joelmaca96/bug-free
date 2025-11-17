@@ -22,7 +22,7 @@ const app = initializeApp(firebaseConfig);
 // Servicios de Firebase
 export const auth = getAuth(app);
 export const db = getFirestore(app);
-export const functions = getFunctions(app);
+export const functions = getFunctions(app, 'europe-west1');
 export const realtimeDb = getDatabase(app);
 
 // Usar emuladores en desarrollo (opcional)
