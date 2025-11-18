@@ -28,6 +28,7 @@ import {
   Divider,
   FormControlLabel,
   Checkbox,
+  Backdrop,
 } from '@mui/material';
 import FullCalendar from '@fullcalendar/react';
 import dayGridPlugin from '@fullcalendar/daygrid';
@@ -602,7 +603,7 @@ const CalendarioPage: React.FC = () => {
 
       {/* Panel de Conflictos Detallado */}
       {conflictos.length > 0 && (
-        <Accordion sx={{ mb: 3 }} defaultExpanded={conflictos.length > 0}>
+        <Accordion sx={{ mb: 3 }} defaultExpanded={false}>
           <AccordionSummary expandIcon={<ExpandMoreIcon />}>
             <Box display="flex" alignItems="center" gap={1}>
               <ErrorIcon color="error" />
@@ -881,6 +882,35 @@ const CalendarioPage: React.FC = () => {
           </Button>
         </DialogActions>
       </Dialog>
+
+      {/* Backdrop de Loading */}
+      <Backdrop
+        sx={{
+          color: '#fff',
+          zIndex: (theme) => theme.zIndex.drawer + 1,
+          backgroundColor: 'rgba(0, 0, 0, 0.7)',
+        }}
+        open={generating || schedulerEngine.loading}
+      >
+        <Box
+          sx={{
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            gap: 2,
+          }}
+        >
+          <CircularProgress color="inherit" size={60} />
+          <Typography variant="h6" color="inherit">
+            {schedulerEngine.loading && schedulerEngine.progress
+              ? schedulerEngine.progress
+              : 'Generando calendario...'}
+          </Typography>
+          <Typography variant="body2" color="inherit" sx={{ opacity: 0.8 }}>
+            Por favor espera, esto puede tomar unos momentos
+          </Typography>
+        </Box>
+      </Backdrop>
     </Box>
   );
 };
