@@ -8,7 +8,6 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
-  TextField,
   Grid,
   Alert,
   CircularProgress,
@@ -25,14 +24,10 @@ import {
 import { DataGrid, GridColDef } from '@mui/x-data-grid';
 import AddIcon from '@mui/icons-material/Add';
 import DeleteIcon from '@mui/icons-material/Delete';
-import EmailIcon from '@mui/icons-material/Email';
 import EditIcon from '@mui/icons-material/Edit';
-import { createUserWithEmailAndPassword } from 'firebase/auth';
-import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
-import { auth, db } from '@/services/firebase';
 import { Usuario, Empresa, Farmacia } from '@/types';
 import { getUsuarios, deleteUsuarioComplete } from '@/services/usuariosRealtimeService';
-import { getEmpresas, deleteEmpresaCascade, getEmpresaById } from '@/services/empresasRealtimeService';
+import { getEmpresas, deleteEmpresaCascade } from '@/services/empresasRealtimeService';
 import { getFarmacias, deleteFarmacia } from '@/services/farmaciasRealtimeService';
 import { useNavigate } from 'react-router-dom';
 
@@ -361,7 +356,7 @@ const SuperuserDashboard: React.FC = () => {
 
       {/* Tabs */}
       <Paper sx={{ mb: 3 }}>
-        <Tabs value={tabValue} onChange={(e, newValue) => setTabValue(newValue)}>
+        <Tabs value={tabValue} onChange={(_, newValue) => setTabValue(newValue)}>
           <Tab label="Empresas" />
           <Tab label="Farmacias" />
           <Tab label="Usuarios" />

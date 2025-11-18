@@ -13,7 +13,6 @@ import {
   Select,
   FormControl,
   InputLabel,
-  Typography,
 } from '@mui/material';
 import { DataGrid, GridColDef, GridActionsCellItem } from '@mui/x-data-grid';
 import AddIcon from '@mui/icons-material/Add';
@@ -25,7 +24,7 @@ import {
   updateEmpresa,
   deleteEmpresa,
 } from '@/services/empresasRealtimeService';
-import { getAdminsDisponibles, getUsuariosByRol, updateUsuario } from '@/services/usuariosRealtimeService';
+import { getUsuariosByRol, updateUsuario } from '@/services/usuariosRealtimeService';
 import { Empresa, Usuario } from '@/types';
 import CreateEmpresaConAdminDialog from '@/components/CreateEmpresaConAdminDialog';
 
@@ -78,7 +77,7 @@ const Empresas: React.FC = () => {
         nombre: empresa.nombre,
         direccion: empresa.direccion,
         contacto: empresa.contacto,
-        adminId: empresa.adminId,
+        adminId: empresa.adminId || '',
       });
     } else {
       setEditingEmpresa(null);

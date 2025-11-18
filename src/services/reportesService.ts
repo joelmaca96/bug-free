@@ -75,7 +75,7 @@ export const generarPDFEmpleado = (
 
   // Headers de tabla
   doc.setFontSize(PDF_CONFIG.fontSize.normal);
-  doc.setFont(undefined, 'bold');
+  doc.setFont('helvetica', 'bold');
   doc.text('Fecha', PDF_CONFIG.marginLeft, yPosition);
   doc.text('Día', PDF_CONFIG.marginLeft + 40, yPosition);
   doc.text('Hora Inicio', PDF_CONFIG.marginLeft + 70, yPosition);
@@ -83,7 +83,7 @@ export const generarPDFEmpleado = (
   doc.text('Tipo', PDF_CONFIG.marginLeft + 140, yPosition);
   yPosition += PDF_CONFIG.lineHeight;
 
-  doc.setFont(undefined, 'normal');
+  doc.setFont('helvetica', 'normal');
 
   // Ordenar turnos por fecha
   const turnosOrdenados = [...turnos].sort((a, b) => a.fecha.localeCompare(b.fecha));
@@ -111,11 +111,11 @@ export const generarPDFEmpleado = (
   doc.line(PDF_CONFIG.marginLeft, yPosition, 190, yPosition);
   yPosition += PDF_CONFIG.lineHeight;
 
-  doc.setFont(undefined, 'bold');
+  doc.setFont('helvetica', 'bold');
   doc.text('Resumen', PDF_CONFIG.marginLeft, yPosition);
   yPosition += PDF_CONFIG.lineHeight;
 
-  doc.setFont(undefined, 'normal');
+  doc.setFont('helvetica', 'normal');
   const totalHoras = turnos.reduce((sum, t) => sum + (t.horaFin - t.horaInicio), 0);
   const totalGuardias = turnos.filter(t => t.tipo === 'guardia').length;
   const totalFestivos = turnos.filter(t => t.tipo === 'festivo').length;
@@ -173,7 +173,7 @@ export const generarPDFCompleto = (
   yPosition += PDF_CONFIG.lineHeight * 2;
 
   // Resumen por empleado
-  empleados.forEach((empleado, index) => {
+  empleados.forEach((empleado) => {
     if (yPosition > 260) {
       doc.addPage();
       yPosition = PDF_CONFIG.marginTop;
@@ -182,7 +182,7 @@ export const generarPDFCompleto = (
     const turnos = turnosPorEmpleado.get(empleado.uid) || [];
     const totalHoras = turnos.reduce((sum, t) => sum + (t.horaFin - t.horaInicio), 0);
 
-    doc.setFont(undefined, 'bold');
+    doc.setFont('helvetica', 'bold');
     doc.text(
       `${empleado.datosPersonales.nombre} ${empleado.datosPersonales.apellidos}`,
       PDF_CONFIG.marginLeft,
@@ -190,7 +190,7 @@ export const generarPDFCompleto = (
     );
     yPosition += PDF_CONFIG.lineHeight;
 
-    doc.setFont(undefined, 'normal');
+    doc.setFont('helvetica', 'normal');
     doc.text(`Turnos: ${turnos.length} | Horas: ${totalHoras}h`, PDF_CONFIG.marginLeft + 5, yPosition);
     yPosition += PDF_CONFIG.lineHeight * 1.5;
   });
@@ -228,10 +228,10 @@ export const generarExcel = (
 
     resumenData.push([
       `${empleado.datosPersonales.nombre} ${empleado.datosPersonales.apellidos}`,
-      turnos.length,
-      totalHoras,
-      guardias,
-      festivos,
+      turnos.length.toString(),
+      totalHoras.toString(),
+      guardias.toString(),
+      festivos.toString(),
     ]);
   });
 
@@ -261,7 +261,7 @@ export const generarExcel = (
         diaSemana.charAt(0).toUpperCase() + diaSemana.slice(1),
         `${turno.horaInicio}:00`,
         `${turno.horaFin}:00`,
-        horas,
+        horas.toString(),
         turno.tipo.charAt(0).toUpperCase() + turno.tipo.slice(1),
       ]);
     });
@@ -269,8 +269,8 @@ export const generarExcel = (
     // Resumen
     const totalHoras = turnos.reduce((sum, t) => sum + (t.horaFin - t.horaInicio), 0);
     empleadoData.push([]);
-    empleadoData.push(['Total Turnos:', turnos.length]);
-    empleadoData.push(['Total Horas:', totalHoras]);
+    empleadoData.push(['Total Turnos:', turnos.length.toString()]);
+    empleadoData.push(['Total Horas:', totalHoras.toString()]);
 
     const empleadoSheet = XLSX.utils.aoa_to_sheet(empleadoData);
 

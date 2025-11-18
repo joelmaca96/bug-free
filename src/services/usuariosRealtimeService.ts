@@ -4,9 +4,6 @@ import {
   set,
   update,
   remove,
-  query,
-  orderByChild,
-  equalTo,
   onValue,
   off,
 } from 'firebase/database';

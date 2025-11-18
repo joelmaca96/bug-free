@@ -49,12 +49,10 @@ import {
   updateTurno,
   deleteTurno,
   deleteTurnosByDateRange,
-  createTurnosBatch,
 } from '@/services/calendariosRealtimeService';
 import { getFarmaciaById } from '@/services/farmaciasRealtimeService';
 import { getUsuariosByFarmacia } from '@/services/usuariosRealtimeService';
 import { getOrCreateConfiguracion } from '@/services/configuracionAlgoritmoRealtimeService';
-import { executeSchedulingAlgorithm } from '@/utils/algorithm';
 import { TurnoValidator } from '@/utils/algorithm/validation';
 import { useSchedulerEngine } from '@/hooks/useSchedulerEngine';
 

@@ -68,9 +68,11 @@ export const createEmpresa = async (
 ): Promise<string> => {
   try {
     // Verificar que el adminId no esté ya asignado a otra empresa
-    const existingEmpresa = await getEmpresaByAdminId(empresa.adminId);
-    if (existingEmpresa) {
-      throw new Error('El usuario admin ya está asignado a otra empresa');
+    if (empresa.adminId) {
+      const existingEmpresa = await getEmpresaByAdminId(empresa.adminId);
+      if (existingEmpresa) {
+        throw new Error('El usuario admin ya está asignado a otra empresa');
+      }
     }
 
     const empresasRef = ref(realtimeDb, 'empresas');

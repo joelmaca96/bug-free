@@ -1,4 +1,4 @@
-import { format, parseISO, differenceInHours } from 'date-fns';
+import { parseISO, differenceInHours } from 'date-fns';
 import { Turno, Usuario, ConfiguracionAlgoritmo } from '@/types';
 
 /**
@@ -74,8 +74,6 @@ export class TurnoValidator {
     turnosExistentes: Turno[],
     maxConsecutivos: number
   ): boolean {
-    const fechaNueva = parseISO(nuevoTurno.fecha);
-
     // Obtener turnos ordenados por fecha
     const turnosOrdenados = [...turnosExistentes, nuevoTurno].sort((a, b) =>
       a.fecha.localeCompare(b.fecha)

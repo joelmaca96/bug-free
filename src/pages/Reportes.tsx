@@ -16,7 +16,6 @@ import {
   CardContent,
   CardActions,
   Checkbox,
-  FormControlLabel,
   List,
   ListItem,
   ListItemText,

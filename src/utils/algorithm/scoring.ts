@@ -102,7 +102,7 @@ export class ScoringSystem {
   ): number {
     let score = 1000; // Comenzar con score base
 
-    const { prioridades, restricciones } = this.config;
+    const { prioridades } = this.config;
 
     // Penalizar slots sin cobertura completa
     if (prioridades.coberturaMinima.activo) {
@@ -204,7 +204,7 @@ export class ScoringSystem {
    * Verificar si hay patrón consistente de turnos
    */
   private tienePatronConsistente(
-    empleadoId: string,
+    _empleadoId: string,
     slot: TimeSlot,
     turnosEmpleado: Turno[]
   ): boolean {

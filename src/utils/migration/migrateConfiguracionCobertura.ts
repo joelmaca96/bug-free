@@ -10,7 +10,7 @@ import {
   updateDoc,
   getDoc,
 } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
+import { db } from '@/services/firebase';
 import { Farmacia, ConfiguracionCobertura, HorarioHabitual } from '@/types';
 
 // Generar ID único

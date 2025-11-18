@@ -116,17 +116,13 @@ export class HoursTracker {
    * Verificar si el empleado excedería los límites al agregar un turno
    * @param turnoIdToReplace - ID del turno que se va a reemplazar/extender (opcional)
    */
-  wouldExceedLimits(empleado: Usuario, turno: Turno, turnoIdToReplace?: string): boolean {
+  wouldExceedLimits(empleado: Usuario, turno: Turno, _turnoIdToReplace?: string): boolean {
     const fecha = new Date(turno.fecha);
     const horasNuevas = turno.horaFin - turno.horaInicio;
 
-    // Si estamos reemplazando un turno, obtener sus horas para restarlas
-    let horasARestar = 0;
-    if (turnoIdToReplace) {
-      // Las horas a restar son las del turno original que se va a extender
-      // Esto se calculará desde el unifiedAlgorithm
-      // Por ahora, no hacemos nada especial aquí
-    }
+    // Si estamos reemplazando un turno, las horas a restar son las del turno original
+    // que se va a extender. Esto se calculará desde el unifiedAlgorithm.
+    // Por ahora, no hacemos nada especial con _turnoIdToReplace
 
     const horasDiariasActuales = this.getHorasDiarias(empleado.uid, fecha);
     const horasSemanalesActuales = this.getHorasSemanales(empleado.uid, fecha);

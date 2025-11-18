@@ -1,7 +1,6 @@
 import { parseISO, differenceInHours } from 'date-fns';
 import { Turno, Usuario, ConfiguracionAlgoritmo, TimeSlot, Conflicto, SeveridadConflicto } from '@/types';
 import { HoursTracker } from './hoursTracker';
-import { TurnoValidator } from './validation';
 
 // Función simple para generar IDs únicos
 const generateId = () => {
@@ -100,7 +99,6 @@ export class ConflictDetector {
     // Verificar cada turno
     turnos.forEach((turno) => {
       const fecha = new Date(turno.fecha);
-      const horas = turno.horaFin - turno.horaInicio;
 
       // Verificar diarias
       const horasDiarias = this.hoursTracker.getHorasDiarias(empleado.uid, fecha);
@@ -219,7 +217,6 @@ export class ConflictDetector {
     const turnosOrdenados = [...turnos].sort((a, b) => a.fecha.localeCompare(b.fecha));
 
     let consecutivos = 1;
-    let fechaInicio = turnosOrdenados[0]?.fecha;
 
     for (let i = 1; i < turnosOrdenados.length; i++) {
       const fecha1 = parseISO(turnosOrdenados[i - 1].fecha);
@@ -248,7 +245,6 @@ export class ConflictDetector {
         }
       } else {
         consecutivos = 1;
-        fechaInicio = turnosOrdenados[i].fecha;
       }
     }
 

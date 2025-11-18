@@ -30,7 +30,6 @@ import {
   getUsuariosByFarmacia,
   getUsuariosByEmpresa,
   updateUsuario,
-  deleteUsuario,
   deleteUsuarioComplete,
   createUsuarioComplete,
 } from '@/services/usuariosRealtimeService';
@@ -239,6 +238,7 @@ const Empleados: React.FC = () => {
           diasFestivos: [],
         },
         incluirEnCalendario: usuario.incluirEnCalendario !== undefined ? usuario.incluirEnCalendario : true,
+        password: '', // No se usa al editar, solo al crear
       });
     } else {
       setEditingUsuario(null);

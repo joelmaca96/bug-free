@@ -11,7 +11,6 @@ import {
   where,
   serverTimestamp,
   Timestamp,
-  writeBatch,
 } from 'firebase/firestore';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
 import { db, auth } from './firebase';

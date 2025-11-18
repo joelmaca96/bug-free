@@ -4,12 +4,9 @@ import {
   format,
   getDay,
   isSameDay,
-  isWithinInterval,
   parseISO,
-  startOfMonth,
   startOfWeek,
   endOfWeek,
-  differenceInHours,
 } from 'date-fns';
 import {
   Usuario,
@@ -18,7 +15,6 @@ import {
   ResultadoAlgoritmo,
   Turno,
   TimeSlot,
-  TipoTurno,
   HorasEmpleado,
   Conflicto,
 } from '@/types';
@@ -38,17 +34,6 @@ interface EmpleadoState {
   turnosConsecutivos: number;
   ultimoTurno: Turno | null;
   disponibilidad: Map<string, boolean>; // fecha -> disponible
-}
-
-/**
- * Plantilla de turno para patrones semanales
- */
-interface PlantillaTurno {
-  dia: number; // 0-6
-  horaInicio: number;
-  horaFin: number;
-  tipo: TipoTurno;
-  empleadoAsignadoSemanaAnterior?: string; // Para mantener estabilidad
 }
 
 /**
@@ -350,7 +335,7 @@ export class UnifiedSchedulingAlgorithm {
   /**
    * Cargar histórico del año para equilibrar guardias/festivos
    */
-  private async cargarHistoricoAnual(fechaActual: Date): Promise<void> {
+  private async cargarHistoricoAnual(_fechaActual: Date): Promise<void> {
     // TODO: Implementar carga de turnos de meses anteriores del mismo año
     // Por ahora, inicializar en 0
     this.empleados.forEach((empleado) => {
@@ -543,7 +528,6 @@ export class UnifiedSchedulingAlgorithm {
     });
 
     const primerSlot = slotsOrdenados[0];
-    const esGuardia = primerSlot.tipo === 'guardia';
 
     console.log(`[asignarEmpleadoATurnoParcial] Intentando asignar ${slotsOrdenados.length} slots desde ${primerSlot.fecha} ${primerSlot.horaInicio}:00 (tipo: ${primerSlot.tipo})`);
 
@@ -674,7 +658,8 @@ export class UnifiedSchedulingAlgorithm {
       if (exceedsLimits) {
         const horasEmpleado = this.hoursTracker.getHorasEmpleado(empleado.uid);
         const horasDiarias = horasEmpleado?.diarias[turnoCompleto.fecha] || 0;
-        console.log(`[asignarEmpleadoATurnoCompleto] → ${empleado.datosPersonales.nombre}: FALLA límite de horas (tiene ${horasDiarias}h, turno es ${turnoCompleto.duracionMinutos/60}h, límite: ${this.config.restricciones.maxHorasDiarias}h)`);
+        const duracionHoras = turnoCompleto.duracionMinutos ? turnoCompleto.duracionMinutos / 60 : 0;
+        console.log(`[asignarEmpleadoATurnoCompleto] → ${empleado.datosPersonales.nombre}: FALLA límite de horas (tiene ${horasDiarias}h, turno es ${duracionHoras}h, límite: ${this.config.restricciones.maxHorasDiarias}h)`);
         continue;
       }
 
@@ -1060,31 +1045,34 @@ export class UnifiedSchedulingAlgorithm {
 
   /**
    * Asignar el mejor empleado disponible a un slot
+   * NOTA: Esta función no se usa actualmente pero se mantiene para uso futuro
    */
-  private asignarMejorEmpleadoASlot(
-    slot: TimeSlot,
-    empleadosCandidatos: Usuario[]
-  ): boolean {
-    // Intentar encontrar empleado válido
-    for (const empleado of empleadosCandidatos) {
-      if (this.puedeAsignarEmpleadoASlot(empleado, slot)) {
-        this.asignarEmpleadoASlot(empleado, slot);
-        return true;
-      }
-    }
-
-    // Si no se pudo asignar nadie, verificar si se permiten horas extra
-    if (this.config.restricciones.permitirHorasExtra) {
-      for (const empleado of empleadosCandidatos) {
-        if (this.puedeAsignarConHorasExtra(empleado, slot)) {
-          this.asignarEmpleadoASlot(empleado, slot);
-          return true;
-        }
-      }
-    }
-
-    return false;
-  }
+  /* eslint-disable @typescript-eslint/no-unused-vars */
+  // private asignarMejorEmpleadoASlot(
+  //   slot: TimeSlot,
+  //   empleadosCandidatos: Usuario[]
+  // ): boolean {
+  //   // Intentar encontrar empleado válido
+  //   for (const empleado of empleadosCandidatos) {
+  //     if (this.puedeAsignarEmpleadoASlot(empleado, slot)) {
+  //       this.asignarEmpleadoASlot(empleado, slot);
+  //       return true;
+  //     }
+  //   }
+  //
+  //   // Si no se pudo asignar nadie, verificar si se permiten horas extra
+  //   if (this.config.restricciones.permitirHorasExtra) {
+  //     for (const empleado of empleadosCandidatos) {
+  //       if (this.puedeAsignarConHorasExtra(empleado, slot)) {
+  //         this.asignarEmpleadoASlot(empleado, slot);
+  //         return true;
+  //       }
+  //     }
+  //   }
+  //
+  //   return false;
+  // }
+  /* eslint-enable @typescript-eslint/no-unused-vars */
 
   /**
    * Verificar si se puede asignar un empleado a un slot
@@ -1093,13 +1081,13 @@ export class UnifiedSchedulingAlgorithm {
     // Verificar disponibilidad en fecha
     const state = this.empleadosState.get(empleado.uid);
     if (state?.disponibilidad.get(slot.fecha) === false) {
-      console.log(`[VALIDACIÓN] ✗ Empleado ${empleado.nombre} no disponible en ${slot.fecha}`);
+      console.log(`[VALIDACIÓN] ✗ Empleado ${empleado.datosPersonales.nombre} no disponible en ${slot.fecha}`);
       return false;
     }
 
     // Verificar que no esté ya asignado
     if (slot.asignaciones.includes(empleado.uid)) {
-      console.log(`[VALIDACIÓN] ✗ Empleado ${empleado.nombre} ya asignado a slot ${slot.fecha} ${slot.horaInicio}:00`);
+      console.log(`[VALIDACIÓN] ✗ Empleado ${empleado.datosPersonales.nombre} ya asignado a slot ${slot.fecha} ${slot.horaInicio}:00`);
       return false;
     }
 
@@ -1128,7 +1116,7 @@ export class UnifiedSchedulingAlgorithm {
       estado: 'pendiente',
     };
 
-    console.log(`[VALIDACIÓN] Validando para ${empleado.nombre}: ${slot.fecha} ${turnoTemporal.horaInicio}:00-${turnoTemporal.horaFin}:00 (${duracionFinal/60}h, ${turnoExtendible ? 'EXTENSIÓN' : 'NUEVO'})`);
+    console.log(`[VALIDACIÓN] Validando para ${empleado.datosPersonales.nombre}: ${slot.fecha} ${turnoTemporal.horaInicio}:00-${turnoTemporal.horaFin}:00 (${duracionFinal/60}h, ${turnoExtendible ? 'EXTENSIÓN' : 'NUEVO'})`);
 
     // Obtener turnos del empleado (sin el que vamos a extender si existe)
     const turnosEmpleado = turnoExtendible
@@ -1256,7 +1244,8 @@ export class UnifiedSchedulingAlgorithm {
       this.turnosPorEmpleado.get(empleado.uid)!.push(nuevoTurno);
       this.hoursTracker.addTurno(empleado.uid, nuevoTurno);
 
-      console.log(`[ASIGNACIÓN] → NUEVO turno ${nuevoTurno.fecha} ${nuevoTurno.horaInicio}:00-${nuevoTurno.horaFin}:00 (${nuevoTurno.duracionMinutos/60}h, tipo: ${nuevoTurno.tipo})`);
+      const duracionHoras = nuevoTurno.duracionMinutos ? nuevoTurno.duracionMinutos / 60 : 0;
+      console.log(`[ASIGNACIÓN] → NUEVO turno ${nuevoTurno.fecha} ${nuevoTurno.horaInicio}:00-${nuevoTurno.horaFin}:00 (${duracionHoras}h, tipo: ${nuevoTurno.tipo})`);
 
       state.ultimoTurno = nuevoTurno;
     }

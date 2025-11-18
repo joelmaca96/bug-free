@@ -155,6 +155,7 @@ const Farmacias: React.FC = () => {
             jornadasGuardia: [],
             festivosRegionales: [],
             trabajadoresMinimos: 1,
+            configuracionesCobertura: [],
           },
         });
 
